@@ -198,8 +198,9 @@ if __name__ == "__main__":
             ref_data = parse_report_file(fortran_out)
             target_data = parse_report_file(cpp_out)
             
-            # Execute strict relative difference validations for all three simulation inputs
-            success = compare_results(ref_data, target_data, inp_name, tolerance=5e-2)
+            # Execute strict relative difference validations (1.0% tolerance for new files, 5.0% for test1.inp)
+            tol_val = 5e-2 if inp_name == "test1.inp" else 1e-2
+            success = compare_results(ref_data, target_data, inp_name, tolerance=tol_val)
             if not success:
                 print(f"❌ Error: {inp_name} logged convergence variations compared to legacy reference.")
             overall_success = overall_success and success
