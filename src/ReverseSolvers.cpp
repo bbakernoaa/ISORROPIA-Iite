@@ -274,7 +274,7 @@ void Solver::cal_s2(const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act1();
         } else {
             break;
         }
@@ -515,7 +515,7 @@ void Solver::cal_q5(const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act3();
         } else {
             break;
         }
@@ -707,7 +707,7 @@ void Solver::cal_r6(const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act4();
         } else {
             break;
         }
@@ -850,7 +850,7 @@ void Solver::cal_v7(const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act4();
         } else {
             break;
         }
@@ -994,7 +994,7 @@ void Solver::cal_u8(const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act4();
         } else {
             break;
         }
@@ -1153,7 +1153,7 @@ void Solver::cal_w13(const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act4();
         } else {
             break;
         }

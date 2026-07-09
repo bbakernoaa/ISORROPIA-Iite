@@ -8887,4 +8887,288 @@ void State::cal_act2() {
     calain = errin >= epsact;
 }
 
+void State::cal_act3() {
+    // 1. Re-initialize Outer and Inner activity loops (Outer: only if FRST, Inner: always)
+    if (frst) {
+        for (size_t i = 0; i < 13; ++i) {
+            gamou[i] = gama[i];
+        }
+    }
+
+    for (size_t i = 0; i < 13; ++i) {
+        gamin[i] = gama[i];
+    }
+
+    // 2. Calculate Ionic Strength of Solution
+    ionic = 0.0;
+    for (size_t i = 0; i < 7; ++i) { // Na+, H+, NH4+, NO3-, Cl-, SO4--, HSO4- (indices 0 to 6)
+        ionic += molal[i] * z[i] * z[i];
+    }
+    ionic = std::max(std::min(0.5 * ionic / water, 100.0), tiny);
+
+    // 3. Retrieve binary activity coefficients
+    std::array<double, 23> bin_g0 = {0.0};
+    km_tab(ionic, temp, bin_g0);
+
+    std::array<std::array<double, 4>, 6> G0 = {0.0};
+    G0[1][0] = bin_g0[0];  // NaCl -> BNC01M -> G0(2,1)
+    G0[1][1] = bin_g0[1];  // Na2SO4 -> BNC02M -> G0(2,2)
+    G0[1][3] = bin_g0[2];  // NaNO3 -> BNC03M -> G0(2,4)
+    G0[2][1] = bin_g0[3];  // (NH4)2SO4 -> BNC04M -> G0(3,2)
+    G0[2][3] = bin_g0[4];  // NH4NO3 -> BNC05M -> G0(3,4)
+    G0[2][0] = bin_g0[5];  // NH4Cl -> BNC06M -> G0(3,1)
+    G0[0][1] = bin_g0[6];  // 2H-SO4 -> BNC07M -> G0(1,2)
+    G0[0][2] = bin_g0[7];  // H-HSO4 -> BNC08M -> G0(1,3)
+    G0[2][2] = bin_g0[8];  // NH4HSO4 -> BNC09M -> G0(3,3)
+    G0[0][3] = bin_g0[9];  // H-NO3 -> BNC10M -> G0(1,4)
+    G0[0][0] = bin_g0[10]; // H-Cl -> BNC11M -> G0(1,1)
+    G0[1][2] = bin_g0[11]; // NaHSO4 -> BNC12M -> G0(2,3)
+
+    // 4. Bromley Multicomponent Formulas
+    double agama = 0.511 * std::pow(298.0 / temp, 1.5);
+    double sion = std::sqrt(ionic);
+    double h = agama * sion / (1.0 + sion);
+
+    std::array<double, 3> f1 = {0.0};
+    std::array<double, 4> f2 = {0.0};
+
+    auto get_cation_idx = [](size_t I) -> size_t {
+        if (I == 1) return 1; // H+
+        if (I == 2) return 0; // Na+
+        if (I == 3) return 2; // NH4+
+        return 0;
+    };
+
+    auto get_anion_idx = [](size_t J) -> size_t {
+        if (J == 1) return 4; // Cl-
+        if (J == 2) return 5; // SO4--
+        if (J == 3) return 6; // HSO4-
+        if (J == 4) return 3; // NO3-
+        return 0;
+    };
+
+    for (size_t I : {1, 2, 3}) {
+        double z_i = z[get_cation_idx(I)];
+        double m_i = molal[get_cation_idx(I)] / water;
+        for (size_t J : {1, 2, 3, 4}) {
+            double z_j = z[get_anion_idx(J)];
+            double ch = 0.25 * (z_i + z_j) * (z_i + z_j) / ionic;
+            double x_ij = ch * m_i;
+            double y_ji = ch * molal[get_anion_idx(J)] / water;
+
+            f1[I - 1] += y_ji * (G0[I - 1][J - 1] + z_i * z_j * h);
+            f2[J - 1] += x_ij * (G0[I - 1][J - 1] + z_i * z_j * h);
+        }
+    }
+
+    auto G = [&](size_t I, size_t J) {
+        double z_i = z[get_cation_idx(I)];
+        double z_j = z[get_anion_idx(J)];
+        return (f1[I - 1] / z_i + f2[J - 1] / z_j) / (z_i + z_j) - h;
+    };
+
+    gama[0]  = G(2, 1) * zz[0];  // NACL
+    gama[1]  = G(2, 2) * zz[1];  // NA2SO4
+    gama[2]  = G(2, 4) * zz[2];  // NANO3
+    gama[3]  = G(3, 2) * zz[3];  // (NH4)2SO4
+    gama[4]  = G(3, 4) * zz[4];  // NH4NO3
+    gama[5]  = G(3, 1) * zz[5];  // NH4CL
+    gama[6]  = G(1, 2) * zz[6];  // 2H-SO4
+    gama[7]  = G(1, 3) * zz[7];  // H-HSO4
+    gama[8]  = G(3, 3) * zz[8];  // NH4HSO4
+    gama[9]  = G(1, 4) * zz[9];  // HNO3
+    gama[10] = G(1, 1) * zz[10]; // HCL
+    gama[11] = G(2, 3) * zz[11]; // NAHSO4
+    gama[12] = 0.20 * (3.0 * gama[3] + 2.0 * gama[8]); // LC Letovicite
+
+    for (size_t i = 0; i < 13; ++i) {
+        gama[i] = std::max(-5.0, std::min(gama[i], 5.0));
+        gama[i] = std::pow(10.0, gama[i]);
+    }
+
+    if (frst) {
+        double errou = 0.0;
+        for (size_t i = 0; i < 13; ++i) {
+            errou = std::max(errou, std::abs((gamou[i] - gama[i]) / std::max(gamou[i], 1e-30)));
+        }
+        calaou = errou >= epsact;
+        frst = false;
+    }
+
+    double errin = 0.0;
+    for (size_t i = 0; i < 13; ++i) {
+        errin = std::max(errin, std::abs((gamin[i] - gama[i]) / std::max(gamin[i], 1e-30)));
+    }
+    calain = errin >= epsact;
+}
+
+void State::cal_act4() {
+    // 1. Re-initialize Outer and Inner activity loops (Outer: only if FRST, Inner: always)
+    if (frst) {
+        for (size_t i = 0; i < 23; ++i) {
+            gamou[i] = gama[i];
+        }
+    }
+
+    for (size_t i = 0; i < 23; ++i) {
+        gamin[i] = gama[i];
+    }
+
+    // 2. Calculate Ionic Strength of Solution (all 10 active ions)
+    ionic = 0.0;
+    for (size_t i = 0; i < 10; ++i) {
+        ionic += molal[i] * z[i] * z[i];
+    }
+    ionic = std::max(std::min(0.5 * ionic / water, 100.0), tiny);
+
+    // 3. Retrieve binary activity coefficients
+    std::array<double, 23> bin_g0 = {0.0};
+    km_tab(ionic, temp, bin_g0);
+
+    std::array<std::array<double, 4>, 6> G0 = {0.0};
+    G0[1][0] = bin_g0[0];  // NaCl -> BNC01M -> G0(2,1)
+    G0[1][1] = bin_g0[1];  // Na2SO4 -> BNC02M -> G0(2,2)
+    G0[1][3] = bin_g0[2];  // NaNO3 -> BNC03M -> G0(2,4)
+    G0[2][1] = bin_g0[3];  // (NH4)2SO4 -> BNC04M -> G0(3,2)
+    G0[2][3] = bin_g0[4];  // NH4NO3 -> BNC05M -> G0(3,4)
+    G0[2][0] = bin_g0[5];  // NH4Cl -> BNC06M -> G0(3,1)
+    G0[0][1] = bin_g0[6];  // 2H-SO4 -> BNC07M -> G0(1,2)
+    G0[0][2] = bin_g0[7];  // H-HSO4 -> BNC08M -> G0(1,3)
+    G0[2][2] = bin_g0[8];  // NH4HSO4 -> BNC09M -> G0(3,3)
+    G0[0][3] = bin_g0[9];  // H-NO3 -> BNC10M -> G0(1,4)
+    G0[0][0] = bin_g0[10]; // H-Cl -> BNC11M -> G0(1,1)
+    G0[1][2] = bin_g0[11]; // NaHSO4 -> BNC12M -> G0(2,3)
+    
+    G0[3][3] = bin_g0[14]; // Ca(NO3)2 -> BNC15M -> G0(4,4)
+    G0[3][0] = bin_g0[15]; // CaCl2 -> BNC16M -> G0(4,1)
+    G0[4][1] = bin_g0[16]; // K2SO4 -> BNC17M -> G0(5,2)
+    G0[4][2] = bin_g0[17]; // KHSO4 -> BNC18M -> G0(5,3)
+    G0[4][3] = bin_g0[18]; // KNO3 -> BNC19M -> G0(5,4)
+    G0[4][0] = bin_g0[19]; // KCl -> BNC20M -> G0(5,1)
+    G0[5][1] = bin_g0[20]; // MgSO4 -> BNC21M -> G0(6,2)
+    G0[5][3] = bin_g0[21]; // Mg(NO3)2 -> BNC22M -> G0(6,4)
+    G0[5][0] = bin_g0[22]; // MgCl2 -> BNC23M -> G0(6,1)
+
+    // 4. Bromley Multicomponent Activity Coefficients (Case 4 contains 6 cations, 4 anions)
+    double agama = 0.511 * std::pow(298.0 / temp, 1.5);
+    double sion = std::sqrt(ionic);
+    double h = agama * sion / (1.0 + sion);
+
+    std::array<double, 6> f1 = {0.0};
+    std::array<double, 4> f2a = {0.0};
+    std::array<double, 4> f2b = {0.0};
+
+    // Helper functions for 1-based Fortran ordered arrays
+    auto get_cation_idx = [](size_t I) -> size_t {
+        if (I == 1) return 1; // H+
+        if (I == 2) return 0; // Na+
+        if (I == 3) return 2; // NH4+
+        if (I == 8) return 7; // Ca++
+        if (I == 9) return 8; // K+
+        if (I == 10) return 9; // Mg++
+        return 0;
+    };
+
+    auto get_anion_idx = [](size_t J) -> size_t {
+        if (J == 1) return 4; // Cl-
+        if (J == 2) return 5; // SO4--
+        if (J == 3) return 6; // HSO4-
+        if (J == 4) return 3; // NO3-
+        return 0;
+    };
+
+    // Loop over the first three standard cations I = 1, 2, 3
+    for (size_t I : {1, 2, 3}) {
+        double z_i = z[get_cation_idx(I)];
+        double m_i = molal[get_cation_idx(I)] / water;
+        for (size_t J : {1, 2, 3, 4}) {
+            double z_j = z[get_anion_idx(J)];
+            double ch = 0.25 * (z_i + z_j) * (z_i + z_j) / ionic;
+            double x_ij = ch * m_i;
+            double y_ji = ch * molal[get_anion_idx(J)] / water;
+
+            f1[I - 1] += y_ji * (G0[I - 1][J - 1] + z_i * z_j * h);
+            f2a[J - 1] += x_ij * (G0[I - 1][J - 1] + z_i * z_j * h);
+        }
+    }
+
+    // Loop over the crustal cations I = 4, 5, 6 (mapping to Ca++, K+, Mg++ at Fortran ordered indices I+4: 8, 9, 10)
+    for (size_t I : {4, 5, 6}) {
+        double z_i = z[get_cation_idx(I + 4)];
+        double m_i = molal[get_cation_idx(I + 4)] / water;
+        for (size_t J : {1, 2, 3, 4}) {
+            if (J == 3) {
+                if (I == 4 || I == 6) { // Skip Ca++ and Mg++ bisulfate pairs (J=3)
+                    continue;
+                }
+            }
+            double z_j = z[get_anion_idx(J)];
+            double ch = 0.25 * (z_i + z_j) * (z_i + z_j) / ionic;
+            double x_ij = ch * m_i;
+            double y_ji = ch * molal[get_anion_idx(J)] / water;
+
+            f1[I - 1] += y_ji * (G0[I - 1][J - 1] + z_i * z_j * h);
+            f2b[J - 1] += x_ij * (G0[I - 1][J - 1] + z_i * z_j * h);
+        }
+    }
+
+    auto GA_fun = [&](size_t I, size_t J) {
+        double z_i = z[get_cation_idx(I)];
+        double z_j = z[get_anion_idx(J)];
+        return (f1[I - 1] / z_i + f2a[J - 1] / z_j) / (z_i + z_j) - h;
+    };
+
+    auto GB_fun = [&](size_t I, size_t J) {
+        double z_i = z[get_cation_idx(I + 4)];
+        double z_j = z[get_anion_idx(J)];
+        return (f1[I - 1] / z_i + f2b[J - 1] / z_j) / (z_i + z_j) - h;
+    };
+
+    // Calculate Log10 multicomponent activity coefficients for Case 4
+    gama[0]  = GA_fun(2, 1) * zz[0];  // NACL -> maps to GAMA(1)
+    gama[1]  = GA_fun(2, 2) * zz[1];  // NA2SO4 -> maps to GAMA(2)
+    gama[2]  = GA_fun(2, 4) * zz[2];  // NANO3 -> maps to GAMA(3)
+    gama[3]  = GA_fun(3, 2) * zz[3];  // (NH4)2SO4 -> maps to GAMA(4)
+    gama[4]  = GA_fun(3, 4) * zz[4];  // NH4NO3 -> maps to GAMA(5)
+    gama[5]  = GA_fun(3, 1) * zz[5];  // NH4CL -> maps to GAMA(6)
+    gama[6]  = GA_fun(1, 2) * zz[6];  // 2H-SO4 -> maps to GAMA(7)
+    gama[7]  = GA_fun(1, 3) * zz[7];  // H-HSO4 -> maps to GAMA(8)
+    gama[8]  = GA_fun(3, 3) * zz[8];  // NH4HSO4 -> maps to GAMA(9)
+    gama[9]  = GA_fun(1, 4) * zz[9];  // HNO3 -> maps to GAMA(10)
+    gama[10] = GA_fun(1, 1) * zz[10]; // HCL -> maps to GAMA(11)
+    gama[11] = GA_fun(2, 3) * zz[11]; // NAHSO4 -> maps to GAMA(12)
+    gama[12] = 0.20 * (3.0 * gama[3] + 2.0 * gama[8]); // LC Letovicite -> maps to GAMA(13)
+    
+    gama[13] = 0.0;                   // CASO4 -> maps to GAMA(14)
+    gama[14] = GB_fun(4, 4) * zz[14]; // CA(NO3)2 -> maps to GAMA(15) (I=4 maps to Ca++, J=4 maps to NO3-)
+    gama[15] = GB_fun(4, 1) * zz[15]; // CACL2 -> maps to GAMA(16) (I=4 maps to Ca++, J=1 maps to Cl-)
+    gama[16] = GB_fun(5, 2) * zz[16]; // K2SO4 -> maps to GAMA(17) (I=5 maps to K+, J=2 maps to SO4--)
+    gama[17] = GB_fun(5, 3) * zz[17]; // KHSO4 -> maps to GAMA(18) (I=5 maps to K+, J=3 maps to HSO4-)
+    gama[18] = GB_fun(5, 4) * zz[18]; // KNO3 -> maps to GAMA(19) (I=5 maps to K+, J=4 maps to NO3-)
+    gama[19] = GB_fun(5, 1) * zz[19]; // KCL -> maps to GAMA(20) (I=5 maps to K+, J=1 maps to Cl-)
+    gama[20] = GB_fun(6, 2) * zz[20]; // MGSO4 -> maps to GAMA(21) (I=6 maps to Mg++, J=2 maps to SO4--)
+    gama[21] = GB_fun(6, 4) * zz[21]; // MGNO32 -> maps to GAMA(22) (I=6 maps to Mg++, J=4 maps to NO3-)
+    gama[22] = GB_fun(6, 1) * zz[22]; // MGCL2 -> maps to GAMA(23) (I=6 maps to Mg++, J=1 maps to Cl-)
+
+    for (size_t i = 0; i < 23; ++i) {
+        gama[i] = std::max(-5.0, std::min(gama[i], 5.0));
+        gama[i] = std::pow(10.0, gama[i]);
+    }
+
+    if (frst) {
+        double errou = 0.0;
+        for (size_t i = 0; i < 23; ++i) {
+            errou = std::max(errou, std::abs((gamou[i] - gama[i]) / std::max(gamou[i], 1e-30)));
+        }
+        calaou = errou >= epsact;
+        frst = false;
+    }
+
+    double errin = 0.0;
+    for (size_t i = 0; i < 23; ++i) {
+        errin = std::max(errin, std::abs((gamin[i] - gama[i]) / std::max(gamin[i], 1e-30)));
+    }
+    calain = errin >= epsact;
+}
+
 } // namespace Isorropia

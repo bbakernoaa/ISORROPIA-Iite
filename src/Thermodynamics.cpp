@@ -282,6 +282,150 @@ void State::cal_cmr() {
         molalr[8] = molal[2]; // NH4HSO4 = NH4+ (MOLAL(3))
         molalr[6] = std::max(molal[5] + molal[6] - molal[2], 0.0); // H2SO4 = SO4-- + HSO4- - NH4+
     }
+    else if (sc == 'G') {
+        molalr[1] = 0.5 * molal[0];                         // NA2SO4
+        double tots4 = molal[5] + molal[6];                 // Total SO4
+        molalr[3] = std::max(tots4 - molalr[1], 0.0);       // (NH4)2SO4
+        double frnh4 = std::max(molal[2] - 2.0 * molalr[3], 0.0);
+        molalr[4] = std::min(molal[3], frnh4);              // NH4NO3
+        frnh4 = std::max(frnh4 - molalr[4], 0.0);
+        molalr[5] = std::min(molal[4], frnh4);              // NH4CL
+    }
+    else if (sc == 'H') {
+        molalr[0] = psi7;                                   // NACL
+        molalr[1] = psi1;                                   // NA2SO4
+        molalr[2] = psi8;                                   // NANO3
+        molalr[3] = 0.0;                                    // (NH4)2SO4
+        double frno3 = std::max(molal[3] - molalr[2], 0.0); // "FREE" NO3
+        double frcl  = std::max(molal[4] - molalr[0], 0.0); // "FREE" CL
+        molalr[4] = std::min(molal[2], frno3);              // NH4NO3
+        double frnh4 = std::max(molal[2] - molalr[4], 0.0);
+        molalr[5] = std::min(frcl, frnh4);                  // NH4CL
+    }
+    else if (sc == 'I') {
+        molalr[3]  = psi5;                                  // (NH4)2SO4
+        molalr[1]  = psi4;                                  // NA2SO4
+        molalr[8]  = psi1;                                  // NH4HSO4
+        molalr[11] = psi3;                                  // NAHSO4
+        molalr[12] = psi2;                                  // LC
+    }
+    else if (sc == 'J') {
+        molalr[8]  = molal[2];                              // NH4HSO4
+        molalr[11] = molal[0];                              // NAHSO4
+        molalr[6]  = std::max(molal[5] + molal[6] - molal[2] - molal[0], 0.0); // H2SO4
+    }
+    else if (sc == 'O') {
+        molalr[1] = 0.5 * molal[0];                         // NA2SO4 (MOLALR(2)) -> index 1
+        double tots4 = molal[5] + molal[6];                 // Total SO4
+        molalr[16] = 0.5 * molal[8];                         // K2SO4 (MOLALR(17)) -> index 16
+        molalr[20] = molal[9];                              // MGSO4 (MOLALR(21)) -> index 20
+        molalr[3] = std::max(tots4 - molalr[1] - molalr[16] - molalr[20], 0.0); // (NH4)2SO4 (MOLALR(4)) -> index 3
+        double frnh4 = std::max(molal[2] - 2.0 * molalr[3], 0.0);
+        molalr[4] = std::min(molal[3], frnh4);              // NH4NO3 (MOLALR(5)) -> index 4
+        frnh4 = std::max(frnh4 - molalr[4], 0.0);
+        molalr[5] = std::min(molal[4], frnh4);              // NH4CL (MOLALR(6)) -> index 5
+    }
+    else if (sc == 'M') {
+        molalr[0] = psi7;                                  // NACL (MOLALR(1))
+        molalr[1] = psi1;                                  // NA2SO4 (MOLALR(2))
+        molalr[2] = psi8;                                  // NANO3 (MOLALR(3))
+        molalr[3] = 0.0;                                   // (NH4)2SO4 (MOLALR(4))
+        double frno3 = std::max(molal[3] - molalr[2], 0.0); // "FREE" NO3
+        double frcl  = std::max(molal[4] - molalr[0], 0.0); // "FREE" CL
+        molalr[4] = std::min(molal[2], frno3);              // NH4NO3 (MOLALR(5))
+        double frnh4 = std::max(molal[2] - molalr[4], 0.0); // "FREE" NH4
+        molalr[5] = std::min(frcl, frnh4);                 // NH4CL (MOLALR(6))
+        molalr[16] = psi9;                                 // K2SO4 (MOLALR(17))
+        molalr[20] = psi10;                                // MGSO4 (MOLALR(21))
+    }
+    else if (sc == 'P') {
+        molalr[0]  = psi7;                                 // NACL
+        molalr[2]  = psi8;                                 // NANO3
+        molalr[14] = psi12;                                // CANO32 (MOLALR(15)) -> index 14
+        molalr[15] = psi17;                                // CACL2 (MOLALR(16)) -> index 15
+        molalr[18] = psi13;                                // KNO3 (MOLALR(19)) -> index 18
+        molalr[19] = psi14;                                // KCL (MOLALR(20)) -> index 19
+        molalr[21] = psi15;                                // MGNO32 (MOLALR(22)) -> index 21
+        molalr[22] = psi16;                                // MGCL2 (MOLALR(23)) -> index 22
+        double frno3 = std::max(molal[3] - molalr[2] - 2.0 * molalr[14] - molalr[18] - 2.0 * molalr[21], 0.0);
+        double frcl  = std::max(molal[4] - molalr[0] - 2.0 * molalr[15] - molalr[19] - 2.0 * molalr[22], 0.0);
+        molalr[4]  = std::min(molal[2], frno3);             // NH4NO3 (MOLALR(5))
+        double frnh4 = std::max(molal[2] - molalr[4], 0.0);
+        molalr[5]  = std::min(frcl, frnh4);                // NH4CL (MOLALR(6))
+        molalr[16] = psi9;                                 // K2SO4 (MOLALR(17))
+        molalr[20] = psi10;                                // MGSO4 (MOLALR(21))
+    }
+    else if (sc == 'L') {
+        molalr[3]  = psi5;                                 // (NH4)2SO4 -> index 3
+        molalr[1]  = psi4;                                 // NA2SO4 -> index 1
+        molalr[8]  = psi1;                                 // NH4HSO4 -> index 8
+        molalr[11] = psi3;                                 // NAHSO4 -> index 11
+        molalr[12] = psi2;                                 // LC -> index 12
+        molalr[16] = psi6;                                 // K2SO4 -> index 16
+        molalr[20] = psi7;                                 // MGSO4 -> index 20
+        molalr[17] = psi8;                                 // KHSO4 -> index 17
+    }
+    else if (sc == 'K') {
+        molalr[8]  = molal[2];                             // NH4HSO4 -> index 8
+        molalr[11] = molal[0];                             // NAHSO4 -> index 11
+        molalr[13] = molal[7];                             // CASO4 -> index 13 (MOLALR(14))
+        molalr[17] = molal[8];                             // KHSO4 -> index 17
+        molalr[20] = molal[9];                             // MGSO4 -> index 20
+        molalr[6]  = std::max(molal[5] + molal[6] - molal[2] - molal[0] - molal[7] - molal[8] - molal[9], 0.0); // H2SO4 -> index 6
+    }
+    else if (sc == 'N') {
+        molalr[3] = molal[5] + molal[6];                     // (NH4)2SO4
+        double aml5 = waer[2] - 2.0 * molalr[3];             // "free" NH4
+        molalr[4] = std::max(std::min(aml5, waer[3]), 0.0);  // NH4NO3
+    }
+    else if (sc == 'Q') {
+        molalr[1] = psi1;                                    // NA2SO4
+        molalr[3] = psi6;                                    // (NH4)2SO4
+        molalr[4] = psi5;                                    // NH4NO3
+        molalr[5] = psi4;                                    // NH4CL
+    }
+    else if (sc == 'R') {
+        molalr[0] = psi3;                                    // NACL
+        molalr[1] = psi1;                                    // NA2SO4
+        molalr[2] = psi2;                                    // NANO3
+        molalr[3] = 0.0;                                     // (NH4)2SO4
+        molalr[4] = psi5;                                    // NH4NO3
+        molalr[5] = psi4;                                    // NH4CL
+    }
+    else if (sc == 'V') {
+        molalr[1]  = psi1;                                   // NA2SO4
+        molalr[3]  = psi6;                                   // (NH4)2SO4
+        molalr[4]  = psi5;                                   // NH4NO3
+        molalr[5]  = psi4;                                   // NH4CL
+        molalr[16] = psi7;                                   // K2SO4
+        molalr[20] = psi8;                                   // MGSO4
+    }
+    else if (sc == 'U') {
+        molalr[0]  = psi3;                                   // NACL
+        molalr[1]  = psi1;                                   // NA2SO4
+        molalr[2]  = psi2;                                   // NANO3
+        molalr[4]  = psi5;                                   // NH4NO3
+        molalr[5]  = psi4;                                   // NH4CL
+        molalr[16] = psi7;                                   // K2SO4
+        molalr[20] = psi8;                                   // MGSO4
+    }
+    else if (sc == 'W') {
+        molalr[0]  = psi7;                                   // NACL
+        molalr[2]  = psi8;                                   // NANO3
+        molalr[4]  = psi6;                                   // NH4NO3
+        molalr[5]  = psi5;                                   // NH4CL
+        molalr[14] = psi12;                                  // CANO32
+        molalr[15] = psi17;                                  // CACL2
+        molalr[16] = psi9;                                   // K2SO4
+        molalr[18] = psi13;                                  // KNO3
+        molalr[19] = psi14;                                  // KCL
+        molalr[20] = psi10;                                  // MGSO4
+        molalr[21] = psi15;                                  // MGNO32
+        molalr[22] = psi16;                                  // MGCL2
+    }
+    else if (sc == 'S') {
+        molalr[3] = std::min(waer[1], 0.5 * waer[2]);       // (NH4)2SO4
+    }
     else {
         // Fallback for Support Phase 2 test records (e.g. Case D3 in test1.inp)
         // Set default Ammonium Sulfate & Ammonium Nitrate mappings if SCASE remains '??'

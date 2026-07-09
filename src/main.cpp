@@ -136,6 +136,8 @@ int main(int argc, char* argv[]) {
         std::transform(lower_file.begin(), lower_file.end(), lower_file.begin(), ::tolower);
         if (lower_file.find("reverse") != std::string::npos) {
             input.iprob = 1; // Reverse Problem
+            std::copy(input.w.begin(), input.w.end(), input.waer.begin());
+            std::fill(input.w.begin(), input.w.end(), 0.0);
         } else {
             input.iprob = 0; // Forward Problem
         }

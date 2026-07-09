@@ -908,7 +908,7 @@ double Solver::funcg5a(double x, const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act3();
         } else {
             break;
         }
@@ -1061,7 +1061,7 @@ double Solver::funch6a(double x, const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act3();
         } else {
             break;
         }
@@ -1115,7 +1115,7 @@ void Solver::cal_ci6(const Input& input, State& state) {
         state.cal_cmr();
 
         if (!state.calain) break;
-        state.cal_act2();
+        state.cal_act3();
     }
 }
 
@@ -1258,7 +1258,7 @@ void Solver::isrp4f(const Input& input, State& state) {
             state.w[7] = (1.0 - 1e-6) * rest2;
             state.w[6] = 0.0;
             state.push_error(53, "ISRP4F: K, MG IN EXCESS");
-        } else if (state.w[7] > rest3) {
+        } else if (state.w[6] > rest3) {
             state.w[6] = (1.0 - 1e-6) * rest3;
             state.push_error(54, "ISRP4F: K IN EXCESS");
         }
@@ -1475,7 +1475,7 @@ double Solver::funco7(double x, const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act4();
         } else {
             break;
         }
@@ -1632,6 +1632,7 @@ double Solver::funcm8(double x, const Input& input, State& state) {
                     - state.molal[8] - 2.0 * state.molal[9];
         double hi = 0.0, ohi = 0.0;
         cal_cph(smin, hi, ohi, state);
+
         state.molal[1] = hi; // H+
 
         state.gnh3  = std::max(state.chi4 - state.psi4, state.tiny);
@@ -1651,7 +1652,7 @@ double Solver::funcm8(double x, const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act4();
         } else {
             break;
         }
@@ -1862,7 +1863,7 @@ double Solver::funcp13(double x, const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act4();
         } else {
             break;
         }
@@ -1937,7 +1938,7 @@ void Solver::cal_cl9(const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act4();
         } else {
             break;
         }
@@ -2040,7 +2041,7 @@ void Solver::cal_ck4(const Input& input, State& state) {
         state.cal_cmr();
 
         if (state.frst && state.calaou || !state.frst && state.calain) {
-            state.cal_act2();
+            state.cal_act4();
         } else {
             break;
         }

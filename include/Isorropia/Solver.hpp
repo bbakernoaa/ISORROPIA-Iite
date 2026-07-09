@@ -535,6 +535,20 @@ struct State {
     void cal_act2();
 
     /**
+     * @brief Computes multicomponent activity coefficients for Case 3 Marine systems.
+     * 
+     * Replaces Fortran 'SUBROUTINE CALCACT3'.
+     */
+    void cal_act3();
+
+    /**
+     * @brief Computes multicomponent activity coefficients for Case 4 Crustal systems.
+     * 
+     * Replaces Fortran 'SUBROUTINE CALCACT4'.
+     */
+    void cal_act4();
+
+    /**
      * @brief Computes dynamic multi-species liquid water content of the aerosol using the ZSR relation.
      * 
      * Replaces Fortran 'SUBROUTINE CALCMR'.
