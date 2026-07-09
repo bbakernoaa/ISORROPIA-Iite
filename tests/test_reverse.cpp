@@ -7,15 +7,15 @@ TEST(ReverseTest, SolveNH4SO4Reverse) {
     Isorropia::State state;
 
     // Set up standard NH4-SO4 system in Reverse mode (iprob = 1)
-    input.w[1] = 1.0; // H2SO4
-    input.w[2] = 2.0; // NH3
+    input.waer[1] = 1.0; // Aerosol H2SO4
+    input.waer[2] = 2.0; // Aerosol NH3
     input.iprob = 1; // Reverse Problem!
     input.rh = 0.80;
 
     solver.solve(input, state);
 
     // Verify appropriate routing and case setup
-    EXPECT_EQ(state.scase, "1R"); // Route to Case 1 Reverse
+    EXPECT_EQ(state.scase, "S2"); // Route to Case 1 Reverse (routes specifically to S2 subcase)
     EXPECT_EQ(state.num_errors, 0);
 }
 
@@ -25,16 +25,16 @@ TEST(ReverseTest, SolveNH4SO4NO3Reverse) {
     Isorropia::State state;
 
     // Set up NH4-SO4-NO3 system in Reverse mode (iprob = 1)
-    input.w[1] = 1.0; // H2SO4
-    input.w[2] = 2.0; // NH3
-    input.w[3] = 1.0; // HNO3
+    input.waer[1] = 1.0; // Aerosol H2SO4
+    input.waer[2] = 2.0; // Aerosol NH3
+    input.waer[3] = 1.0; // Aerosol HNO3
     input.iprob = 1; // Reverse Problem!
     input.rh = 0.80;
 
     solver.solve(input, state);
 
     // Verify appropriate routing and case setup
-    EXPECT_EQ(state.scase, "2R"); // Route to Case 2 Reverse
+    EXPECT_EQ(state.scase, "N3"); // Route to Case 2 Reverse (routes specifically to N3 subcase)
     EXPECT_EQ(state.num_errors, 0);
 }
 
@@ -44,9 +44,9 @@ TEST(ReverseTest, SolveMarineReverse) {
     Isorropia::State state;
 
     // Set up Case 3 Marine reverse
-    input.w[0] = 1.0; // Na
-    input.w[1] = 1.0; // H2SO4
-    input.w[4] = 1.0; // Cl
+    input.waer[0] = 1.0; // Aerosol Na
+    input.waer[1] = 1.0; // Aerosol H2SO4
+    input.waer[4] = 1.0; // Aerosol Cl
     input.iprob = 1; // Reverse!
     input.rh = 0.80;
 
@@ -63,9 +63,9 @@ TEST(ReverseTest, SolveCrustalReverse) {
     Isorropia::State state;
 
     // Set up Case 4 Crustal reverse
-    input.w[0] = 1.0; // Na
-    input.w[1] = 2.0; // H2SO4
-    input.w[5] = 0.5; // Ca
+    input.waer[0] = 1.0; // Aerosol Na
+    input.waer[1] = 2.0; // Aerosol H2SO4
+    input.waer[5] = 0.5; // Aerosol Ca
     input.iprob = 1; // Reverse!
     input.rh = 0.80;
 

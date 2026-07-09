@@ -663,6 +663,7 @@ private:
     double funcw13(double x, const Input& input, State& state);
     void cal_w1a(const Input& input, State& state);
     void cal_nap(State& state);
+    double getasr(double so4i, double rhi);
 
     /**
      * @brief Reverse solver for NH4-SO4-H2O systems (Case 1).
