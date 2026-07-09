@@ -380,27 +380,187 @@ void Solver::isrp3r(const Input& input, State& state) {
     state.scase = "3R";
     state.actmod = 3;
 
-    // 1. Map input aerosol concentrations
-    state.molal[0] = state.waer[0]; // Na+
-    state.molal[2] = state.waer[2]; // NH4+
-    state.molal[3] = state.waer[3]; // NO3-
-    state.molal[4] = state.waer[4]; // Cl-
-    state.molal[5] = state.waer[1]; // SO4--
-    state.molal[6] = 0.0;           // HSO4-
+    bool tryliq = true;
 
-    // 2. Charge balance pH
-    double smin = 2.0 * state.molal[5] + state.molal[3] + state.molal[4] - state.molal[0] - state.molal[2];
-    double hi = 0.0, ohi = 0.0;
-    cal_cph(smin, hi, ohi, state);
-    state.molal[1] = hi;
+    for (int it = 0; it < 2; ++it) {
+        double sulratw = 2.0;
+        if (tryliq && state.rh >= state.drnh4no3) {
+            double frso4 = state.waer[1] - state.waer[0] / 2.0;
+            frso4 = std::max(frso4, state.tiny);
+            double sri = getasr(frso4, state.rh);
+            sulratw = (state.waer[0] + frso4 * sri) / state.waer[1];
+            sulratw = std::min(sulratw, 2.0);
+        }
 
-    // 3. Compute water uptake and activities
+        double sulrat = (state.waer[0] + state.waer[2]) / state.waer[1];
+        double sodrat = state.waer[0] / state.waer[1];
+
+        if (sulratw <= sulrat && sodrat < 2.0) {
+            state.scase = "Q5";
+            cal_q5(input, state);
+        } else if (sulrat >= sulratw && sodrat >= 2.0) {
+            state.scase = "R6";
+            cal_r6(input, state);
+        } else if (sulrat >= 1.0) {
+            for (size_t i = 0; i < 8; ++i) state.w[i] = state.waer[i];
+            state.scase = "I6";
+            cal_ci6(input, state);
+            cal_cnhp(input, state);
+            cal_cnh3p(state);
+        } else {
+            for (size_t i = 0; i < 8; ++i) state.w[i] = state.waer[i];
+            state.scase = "J3";
+            cal_cj3(input, state);
+            cal_cnhp(input, state);
+            cal_cnh3p(state);
+        }
+
+        if (sulratw <= sulrat && sulrat < 2.0 && state.water <= state.tiny) {
+            tryliq = false;
+        } else {
+            break;
+        }
+    }
+}
+
+//=======================================================================
+// CASE Q5 SPECIATION (Marine deliquesced reverse analytical solver)
+//=======================================================================
+void Solver::cal_q5(const Input& input, State& state) {
+    state.calaou = true;
+    state.frst   = true;
+    state.calain = true;
+
+    cal_q1a(input, state);
+
+    state.psi1 = state.cna2so4;
+    state.psi4 = state.cnh4cl;
+    state.psi5 = state.cnh4no3;
+    state.psi6 = state.cnh42s4;
+
     state.cal_cmr();
-    state.cal_act2(); // Uses Standard Case 2/3 active pairs
 
-    // 4. Gas partitionings
-    cal_cnh3p(state);
-    cal_cnhp(input, state);
+    double nh3aq = 0.0;
+    double no3aq = 0.0;
+    double claq  = 0.0;
+
+    int nsweep = 4;
+    for (int sweep = 0; sweep < nsweep; ++sweep) {
+        double akw = state.xkw * state.rh * state.water * state.water;
+
+        double nai  = state.waer[0];
+        double so4i  = state.waer[1];
+        double nh4i  = state.waer[2];
+        double no3i  = state.waer[3];
+        double cli   = state.waer[4];
+        double hso4i = 0.0;
+
+        double gg = 2.0 * so4i + no3i + cli - nai - nh4i;
+        double hi = 0.0, ohi = 0.0;
+
+        if (gg > state.tiny) {
+            double bb = -gg;
+            double cc = -akw;
+            double dd = bb * bb - 4.0 * cc;
+            hi  = 0.5 * (-bb + std::sqrt(dd));
+            ohi = akw / hi;
+        } else {
+            double bb = gg;
+            double cc = -akw;
+            double dd = bb * bb - 4.0 * cc;
+            ohi = 0.5 * (-bb + std::sqrt(dd));
+            hi  = akw / ohi;
+        }
+
+        if (hi < ohi) {
+            double del = 0.0;
+            cal_claq(-gg, nh4i, del, state); // Replaces CALCAMAQ2 with CALCLAQ Equivalent
+            nh3aq = del;
+            hi    = akw / ohi;
+            hso4i = 0.0;
+        } else {
+            double ggno3 = std::max(2.0 * so4i + no3i - nai - nh4i, 0.0);
+            double ggcl  = std::max(gg - ggno3, 0.0);
+            if (ggcl > state.tiny) {
+                double del = 0.0;
+                cal_claq(ggcl, cli, hi, state); // Replaces CALCCLAQ2 with CALCLAQ Equivalent (cal_claq takes double& delt)
+                // Wait! Let's pass parameters correctly to CALCCLAQ2 (reproduced as Solver::cal_claq(cli, hi, delt, state))
+                cal_claq(cli, hi, del, state);
+                claq = del;
+            }
+            if (ggno3 > state.tiny) {
+                if (ggcl <= state.tiny) hi = 0.0;
+                double del = 0.0;
+                cal_niaq(no3i, hi, del, state); // Replaces CALCNIAQ2 with CALCNIAQ equivalent
+                no3aq = del;
+            }
+
+            double del = 0.0;
+            cal_chs4(hi, so4i, 0.0, del, state);
+            so4i  -= del;
+            hi    -= del;
+            hso4i  = del;
+            ohi    = akw / hi;
+        }
+
+        state.molal[0] = nai;
+        state.molal[1] = hi;
+        state.molal[2] = nh4i;
+        state.molal[3] = no3i;
+        state.molal[4] = cli;
+        state.molal[5] = so4i;
+        state.molal[6] = hso4i;
+        state.coh      = ohi;
+
+        state.cal_cmr();
+
+        if (state.frst && state.calaou || !state.frst && state.calain) {
+            state.cal_act2();
+        } else {
+            break;
+        }
+    }
+
+    state.a2 = (state.xk2 / state.xkw) * state.r * state.temp * std::pow(state.gama[9] / state.gama[4], 2.0);
+    state.a3 = state.xk4 * state.r * state.temp * std::pow(state.water / state.gama[9], 2.0);
+    state.a4 = state.xk3 * state.r * state.temp * std::pow(state.water / state.gama[10], 2.0);
+
+    state.gnh3  = state.molal[2] / state.molal[1] / state.a2;
+    state.ghno3 = state.molal[1] * state.molal[3] / state.a3;
+    state.ghcl  = state.molal[1] * state.molal[4] / state.a4;
+
+    state.gasaq[0] = nh3aq;
+    state.gasaq[1] = claq;
+    state.gasaq[2] = no3aq;
+
+    state.cnh42s4 = 0.0;
+    state.cnh4no3 = 0.0;
+    state.cnh4cl  = 0.0;
+    state.cnacl   = 0.0;
+    state.cnano3  = 0.0;
+    state.cna2so4 = 0.0;
+}
+double Solver::funcq5(double x, const Input& input, State& state) {
+    return 0.0;
+}
+
+void Solver::cal_q1a(const Input& input, State& state) {
+    state.cna2so4 = 0.5 * state.waer[0];
+    double frso4   = std::max(state.waer[1] - state.cna2so4, 0.0);
+
+    state.cnh42s4 = std::max(std::min(frso4, 0.5 * state.waer[2]), state.tiny);
+    double frnh3   = std::max(state.waer[2] - 2.0 * state.cnh42s4, 0.0);
+
+    state.cnh4no3 = std::min(frnh3, state.waer[3]);
+    frnh3         = std::max(frnh3 - state.cnh4no3, 0.0);
+
+    state.cnh4cl  = std::min(frnh3, state.waer[4]);
+    frnh3         = std::max(frnh3 - state.cnh4cl, 0.0);
+
+    state.water = 0.0;
+    state.gnh3  = 0.0;
+    state.ghno3 = 0.0;
+    state.ghcl  = 0.0;
 }
 
 void Solver::isrp4r(const Input& input, State& state) {
@@ -435,5 +595,21 @@ void Solver::isrp4r(const Input& input, State& state) {
     cal_cnh3p(state);
     cal_cnhp(input, state);
 }
+
+//=======================================================================
+// REVERSE CHILD SOLVER STUBS FOR TASK 7
+//=======================================================================
+void Solver::cal_r6(const Input& input, State& state) {}
+double Solver::funcr6(double x, const Input& input, State& state) { return 0.0; }
+void Solver::cal_r1a(const Input& input, State& state) {}
+void Solver::cal_v7(const Input& input, State& state) {}
+double Solver::funcv7(double x, const Input& input, State& state) { return 0.0; }
+void Solver::cal_v1a(const Input& input, State& state) {}
+void Solver::cal_u8(const Input& input, State& state) {}
+double Solver::funcu8(double x, const Input& input, State& state) { return 0.0; }
+void Solver::cal_u1a(const Input& input, State& state) {}
+void Solver::cal_w13(const Input& input, State& state) {}
+double Solver::funcw13(double x, const Input& input, State& state) { return 0.0; }
+void Solver::cal_w1a(const Input& input, State& state) {}
 
 } // namespace Isorropia

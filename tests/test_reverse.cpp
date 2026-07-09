@@ -52,7 +52,7 @@ TEST(ReverseTest, SolveMarineReverse) {
 
     solver.solve(input, state);
 
-    EXPECT_EQ(state.scase, "3R"); // Route to Case 3 Reverse
+    EXPECT_EQ(state.scase, "I6"); // Route to Case 3 Reverse (routes to I6 subcase)
     EXPECT_GT(state.water, 0.0);
     EXPECT_EQ(state.num_errors, 0);
 }
