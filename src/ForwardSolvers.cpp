@@ -1871,13 +1871,180 @@ double Solver::funcp13(double x, const Input& input, State& state) {
     return state.molal[1] * state.molal[4] / state.ghcl / state.a6 - 1.0;
 }
 
+//=======================================================================
+// CASE L9: Sulfate rich, no free acid (1.0 <= SULRAT < 2.0) Speciation
+//=======================================================================
 void Solver::cal_cl9(const Input& input, State& state) {
-    state.push_error(99, "cal_cl9 stub called");
+    // 1. Find dry composition
+    cal_cl1a(input, state);
+
+    // 2. Setup parameters (Common SOLUT equivalents)
+    state.chi1 = state.cnh4hs4;
+    state.chi2 = state.clc;
+    state.chi3 = state.cnahso4;
+    state.chi4 = state.cna2so4;
+    state.chi5 = state.cnh42s4;
+    state.chi6 = state.ck2so4;
+    state.chi7 = state.cmgso4;
+    state.chi8 = state.ckhso4;
+
+    state.psi1 = state.chi1;
+    state.psi2 = state.chi2;
+    state.psi3 = state.chi3;
+    state.psi4 = state.chi4;
+    state.psi5 = state.chi5;
+    state.psi6 = state.chi6;
+    state.psi7 = state.chi7;
+    state.psi8 = state.chi8;
+
+    state.calaou = true;
+    state.frst   = true;
+    state.calain = true;
+
+    // 3. Solve equations with iterations for Activity Coefficients
+    int nsweep = 4;
+    for (int sweep = 0; sweep < nsweep; ++sweep) {
+        state.a9 = state.xk1 * state.water / state.gama[6] * std::pow(state.gama[7] / state.gama[6], 2.0);
+
+        // Calculate dissociation quantities
+        double bb = state.psi7 + state.psi6 + state.psi5 + state.psi4 + state.psi2 + state.a9; // LAMDA
+        double cc = -state.a9 * (state.psi8 + state.psi1 + state.psi2 + state.psi3);
+        double dd = std::max(bb * bb - 4.0 * cc, 0.0);
+        double lamda = 0.5 * (-bb + std::sqrt(dd));
+        lamda = std::min(std::max(lamda, state.tiny), state.psi8 + state.psi3 + state.psi2 + state.psi1);
+
+        // Save concentrations in molal array (0-based indexing)
+        state.molal[0] = 2.0 * state.psi4 + state.psi3;                                  // Na+
+        state.molal[1] = lamda;                                                         // H+
+        state.molal[2] = 3.0 * state.psi2 + 2.0 * state.psi5 + state.psi1;              // NH4+
+        state.molal[4] = 0.0;                                                           // Cl-
+        state.molal[5] = state.psi2 + state.psi4 + state.psi5 + state.psi6 + state.psi7 + lamda; // SO4--
+        state.molal[6] = state.psi2 + state.psi3 + state.psi1 + state.psi8 - lamda;         // HSO4-
+        state.molal[3] = 0.0;                                                           // NO3-
+        state.molal[7] = 0.0;                                                           // Ca++
+        state.molal[8] = state.psi8 + 2.0 * state.psi6;                                 // K+
+        state.molal[9] = state.psi7;                                                    // Mg++
+
+        state.clc     = 0.0;
+        state.cnahso4 = 0.0;
+        state.cna2so4 = 0.0;
+        state.cnh42s4 = 0.0;
+        state.cnh4hs4 = 0.0;
+        state.ck2so4  = 0.0;
+        state.cmgso4  = 0.0;
+        state.ckhso4  = 0.0;
+
+        state.cal_cmr();
+
+        if (state.frst && state.calaou || !state.frst && state.calain) {
+            state.cal_act2();
+        } else {
+            break;
+        }
+    }
 }
+
 void Solver::cal_cl1a(const Input& input, State& state) {
+    state.ccaso4  = std::min(state.w[5], state.w[1]);                           // CCASO4
+    double frso4   = std::max(state.w[1] - state.ccaso4, 0.0);
+    double cafr    = std::max(state.w[5] - state.ccaso4, 0.0);
+    state.ck2so4  = std::min(0.5 * state.w[6], frso4);                          // CK2SO4
+    double frk     = std::max(state.w[6] - 2.0 * state.ck2so4, 0.0);
+    frso4          = std::max(frso4 - state.ck2so4, 0.0);
+    state.cna2so4 = std::min(0.5 * state.w[0], frso4);                          // CNA2SO4
+    double frna    = std::max(state.w[0] - 2.0 * state.cna2so4, 0.0);
+    frso4          = std::max(frso4 - state.cna2so4, 0.0);
+    state.cmgso4  = std::min(state.w[7], frso4);                                // CMGSO4
+    double frmg    = std::max(state.w[7] - state.cmgso4, 0.0);
+    frso4          = std::max(frso4 - state.cmgso4, 0.0);
+
+    state.cnh4hs4 = 0.0;
+    state.cnahso4 = 0.0;
+    state.cnh42s4 = 0.0;
+    state.ckhso4  = 0.0;
+
+    state.clc     = std::min(state.w[2] / 3.0, frso4 / 2.0);
+    frso4         = std::max(frso4 - 2.0 * state.clc, 0.0);
+    double frnh4  = std::max(state.w[2] - 3.0 * state.clc, 0.0);
+
+    if (frso4 <= state.tiny) {
+        state.clc     = std::max(state.clc - frnh4, 0.0);
+        state.cnh42s4 = 2.0 * frnh4;
+    } else if (frnh4 <= state.tiny) {
+        state.cnh4hs4 = 3.0 * std::min(frso4, state.clc);
+        state.clc     = std::max(state.clc - frso4, 0.0);
+
+        if (state.cna2so4 > state.tiny) {
+            frso4          = std::max(frso4 - state.cnh4hs4 / 3.0, 0.0);
+            state.cnahso4 = 2.0 * frso4;
+            state.cna2so4  = std::max(state.cna2so4 - frso4, 0.0);
+        }
+        if (state.ck2so4 > state.tiny) {
+            frso4         = std::max(frso4 - state.cnh4hs4 / 3.0, 0.0);
+            state.ckhso4  = 2.0 * frso4;
+            state.ck2so4  = std::max(state.ck2so4 - frso4, 0.0);
+        }
+    }
+
+    state.ghno3 = state.w[3];
+    state.ghcl  = state.w[4];
+    state.gnh3  = 0.0;
 }
+
+//=======================================================================
+// CASE K4: Sulfate super rich, free acid (SO4RAT < 1.0) Speciation
+//=======================================================================
 void Solver::cal_ck4(const Input& input, State& state) {
-    state.push_error(99, "cal_ck4 stub called");
+    state.calaou = true;
+    state.frst   = true;
+    state.calain = true;
+
+    state.chi1 = state.w[2]; // Total NH4 initially as NH4HSO4
+    state.chi2 = state.w[0]; // Total NA initially as NaHSO4
+    state.chi3 = state.w[6]; // Total K initially as KHSO4
+    state.chi4 = state.w[7]; // Total Mg initially as MgSO4
+
+    double lamda = std::max(state.w[1] - state.w[2] - state.w[0] - state.w[5] - state.w[6] - state.w[7], state.tiny); // FREE H2SO4
+    state.psi1 = state.chi1; // ALL NH4HSO4 DELIQUESCED
+    state.psi2 = state.chi2; // ALL NaHSO4 DELIQUESCED
+    state.psi3 = state.chi3; // ALL KHSO4 DELIQUESCED
+    state.psi4 = state.chi4; // ALL MgSO4 DELIQUESCED
+
+    int nsweep = 4;
+    for (int sweep = 0; sweep < nsweep; ++sweep) {
+        state.a4 = state.xk1 * state.water / state.gama[6] * std::pow(state.gama[7] / state.gama[6], 2.0);
+
+        double bb   = state.a4 + lamda + state.psi4; // KAPA
+        double cc   = -state.a4 * (lamda + state.psi3 + state.psi2 + state.psi1) + lamda * state.psi4;
+        double dd   = std::max(bb * bb - 4.0 * cc, 0.0);
+        double kapa = 0.5 * (-bb + std::sqrt(dd));
+
+        // Save concentrations in molal array (0-based indexing)
+        state.molal[0] = state.psi2;                                                     // Na+
+        state.molal[1] = std::max(lamda + kapa, state.tiny);                             // H+
+        state.molal[2] = state.psi1;                                                     // NH4+
+        state.molal[4] = 0.0;                                                           // Cl-
+        state.molal[5] = std::max(kapa + state.psi4, 0.0);                               // SO4--
+        state.molal[6] = std::max(lamda + state.psi1 + state.psi2 + state.psi3 - kapa, 0.0); // HSO4-
+        state.molal[3] = 0.0;                                                           // NO3-
+        state.molal[7] = 0.0;                                                           // Ca++
+        state.molal[8] = state.psi3;                                                    // K+
+        state.molal[9] = state.psi4;                                                    // Mg++
+
+        state.cnh4hs4 = 0.0;
+        state.cnahso4 = 0.0;
+        state.ckhso4  = 0.0;
+        state.ccaso4  = state.w[5];
+        state.cmgso4  = 0.0;
+
+        state.cal_cmr();
+
+        if (state.frst && state.calaou || !state.frst && state.calain) {
+            state.cal_act2();
+        } else {
+            break;
+        }
+    }
 }
 
 } // namespace Isorropia
