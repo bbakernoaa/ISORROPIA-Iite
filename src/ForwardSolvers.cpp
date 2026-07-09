@@ -6,6 +6,7 @@ namespace Isorropia {
 
 void Solver::isrp1f(const Input& input, State& state) {
     state.clear_errors();
+    state.actmod = 1; // Pre-set standard active activity coefficients model
     
     // SULRAT = W(3) / W(2) (Total Ammonia / Total Sulfate)
     double sulrat = state.w[2] / state.w[1];
@@ -185,7 +186,11 @@ void Solver::cal_cb4(const Input& input, State& state) {
         state.cal_cmr();
 
         if (!state.calain) break;
-        state.cal_act1();
+        if (state.actmod == 2) {
+            state.cal_act2();
+        } else {
+            state.cal_act1();
+        }
     }
 }
 
@@ -231,7 +236,11 @@ void Solver::cal_cc2(const Input& input, State& state) {
         state.cal_cmr();
 
         if (!state.calain) break;
-        state.cal_act1();
+        if (state.actmod == 2) {
+            state.cal_act2();
+        } else {
+            state.cal_act1();
+        }
     }
 }
 
@@ -260,6 +269,7 @@ void Solver::cal_cnh3(const Input& input, State& state) {
 
 void Solver::isrp2f(const Input& input, State& state) {
     state.clear_errors();
+    state.actmod = 2; // Pre-set standard active activity coefficients model
     double sulrat = state.w[2] / state.w[1];
 
     if (sulrat >= 2.0) {
@@ -267,15 +277,13 @@ void Solver::isrp2f(const Input& input, State& state) {
         cal_cd3(input, state);
     } 
     else if (sulrat >= 1.0) {
-        state.scase = "B4";
+        state.scase = "E4"; // Set F77 active case prefix 'E' before speciation
         cal_cb4(input, state);
-        state.scase = "E4";
         cal_cna(input, state);
     } 
     else {
-        state.scase = "C2";
+        state.scase = "F2"; // Set F77 active case prefix 'F' before speciation
         cal_cc2(input, state);
-        state.scase = "F2";
         cal_cna(input, state);
     }
 }

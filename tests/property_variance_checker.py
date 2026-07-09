@@ -140,6 +140,17 @@ def analyze_variance(ref_records, target_records, scenarios):
                 "sulrat": sulrat
             })
             
+    # Print outlier runs
+    print("\n--- Outlier Runs (Relative Difference > 5%) ---")
+    for key in keys_to_analyze:
+        if key in ["H+", "HSO4-", "NO3-", "pH"]:  # Skip trace species
+            continue
+        outliers = [r for r in stats[key]["runs"] if r["diff"] > 0.05]
+        if outliers:
+            print(f"\nKey: {key}")
+            for out in outliers[:10]:
+                print(f"  Run {out['run_idx']}: Ref={out['ref_val']:.6e}, Tgt={out['tgt_val']:.6e}, Diff={out['diff']*100:.3f}%, RH={out['rh']:.3f}, Temp={out['temp']:.2f}, SULRAT={out['sulrat']:.3f}")
+            
     # Calculate statistics
     report_lines = []
     report_lines.append("# ISORROPIA-Lite Physical Speciation Property Variance Report\n")
