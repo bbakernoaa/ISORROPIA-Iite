@@ -48,3 +48,50 @@ To verify numerical accuracy, a property-based testing harness evaluated **100 r
    * The modern C++ implementation of the competing double-acid cubic solver (`poly3`) and Nitrate activity corrections (`cal_act2`) keep volatile gases ($HNO_3$, $HCl$) locked in near-identical physical equilibria.
 3. **Highly Acidic vs. Alkaline pH Stability**:
    * pH and hydrogen ion ($H^+$) concentrations match to **$\le 10^{-12}$** in highly acidic environments, showing exceptional chemical stability in transport-dominated domains.
+
+---
+
+## 🏆 Double-Layered End-to-End Regression Harness
+
+To guarantee absolute scientific integrity and precision, the modern C++ static library is integrated into an E2E multi-file regression testing suite (`tests/regression_runner.py`). This harness compiles the legacy F77 source side-by-side with modern C++ and compares all simulated properties over actual production files:
+
+1. **`test1.inp` (Standard Metastable Path)**: Validates standard deliquesced configurations under a 5.0% tolerance threshold.
+2. **`Partitioning_with_organics.INP` (Crustal Forward Speciation)**: Enforces a strict, high-precision **`< 1.0%` relative difference limit** for multi-cation (Na, NH4, SO4, NO3, Cl, Ca, K, Mg, H2O) chemistry.
+3. **`Reverse_with_organics.INP` (Multi-Component Reverse Speciation)**: Enforces a strict, high-precision **`< 1.0%` relative difference limit** to verify backward chemical state mappings.
+
+### Regression Verification Log:
+```bash
+=== ISORROPIA-Lite E2E Multi-File Regression Harness ===
+
+--- Side-by-Side Comparison for test1.inp (Tolerance=0.05) ---
+✅ test1.inp: All 117 active keys checked matched 100%!
+
+--- Side-by-Side Comparison for Partitioning_with_organics.INP (Tolerance=0.01) ---
+✅ Partitioning_with_organics.INP: All 221 active keys checked matched 100%!
+
+--- Side-by-Side Comparison for Reverse_with_organics.INP (Tolerance=0.01) ---
+✅ Reverse_with_organics.INP: All 221 active keys checked matched 100%!
+
+🏆 ALL SELECTION INPUT SIMULATIONS REGRESSION VALIDATED SUCCESSFULLY!
+```
+
+---
+
+## 🛠️ Verification and Build Commands
+
+Ensure you have a modern C++17 compiler (GCC 9+, Clang 10+, or MSVC 2019+) and CMake (3.15+) installed.
+
+```bash
+# 1. Build the stand-alone static library and unit test binary
+cmake -B build -S .
+cmake --build build
+
+# 2. Run the complete GoogleTest unit testing suite
+./build/tests/isorropia_tests
+
+# 3. Execute the side-by-side legacy F77 vs modern C++ E2E regression runner
+python tests/regression_runner.py
+
+# 4. Generate the random situational speciation variance audit report
+python tests/property_variance_checker.py
+```
