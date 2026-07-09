@@ -111,8 +111,12 @@ void Solver::isrp2f(const Input& input, State& state) {
         state.watcmp[3] = 1.750;
         state.watcmp[4] = 0.8769;
         
-        state.watcmp[23] = (1000.0 / input.org[2]) * (input.org[0] * input.org[1]) / (1.0 / std::max(0.05, std::min(input.rh, 0.995)) - 1.0);
-        state.water += state.watcmp[23];
+        if (input.org[2] > 0.0) {
+            state.watcmp[23] = (1000.0 / input.org[2]) * (input.org[0] * input.org[1]) / (1.0 / std::max(0.05, std::min(input.rh, 0.995)) - 1.0);
+            state.water += state.watcmp[23];
+        } else {
+            state.watcmp[23] = 0.0;
+        }
 
         state.ionic = 3.992;
     }

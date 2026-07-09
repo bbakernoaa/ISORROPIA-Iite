@@ -14,6 +14,9 @@ TEST(PropertyTest, VerifyPhysicalInvariants) {
     std::uniform_real_distribution<double> dist_hno3(0.0, 15.0);  // Total nitrate: 0.0 to 15 µg/m3
     std::uniform_real_distribution<double> dist_rh(0.15, 0.98);   // RH: 15% to 98%
     std::uniform_real_distribution<double> dist_temp(260.0, 315.0); // Temperature: 260K to 315K
+    std::uniform_real_distribution<double> dist_org(0.0, 10.0);   // Organic concentration (ug/m3)
+    std::uniform_real_distribution<double> dist_korg(0.0, 0.25);  // Organic hygroscopicity
+    std::uniform_real_distribution<double> dist_rhoorg(800.0, 1200.0); // Organic density (kg/m3)
 
     for (int run = 0; run < 100; ++run) {
         Isorropia::Input input;
@@ -24,6 +27,10 @@ TEST(PropertyTest, VerifyPhysicalInvariants) {
         input.w[3] = dist_hno3(gen); // HNO3 component
         input.rh   = dist_rh(gen);
         input.temp = dist_temp(gen);
+
+        input.org[0] = dist_org(gen);
+        input.org[1] = dist_korg(gen);
+        input.org[2] = dist_rhoorg(gen);
 
         // Execute chemical solvers
         solver.solve(input, state);
