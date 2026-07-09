@@ -588,6 +588,39 @@ private:
     void cal_cnh3p(State& state);
     void cal_cnhp(const Input& input, State& state);
 
+    // Case 4 Forward Solvers
+    void cal_co7(const Input& input, State& state);
+    double funco7(double x, const Input& input, State& state);
+    void cal_cm8(const Input& input, State& state);
+    double funcm8(double x, const Input& input, State& state);
+    void cal_cp13(const Input& input, State& state);
+    double funcp13(double x, const Input& input, State& state);
+    void cal_cl9(const Input& input, State& state);
+    void cal_cl1a(const Input& input, State& state);
+    void cal_ck4(const Input& input, State& state);
+
+    // Reverse Child Solvers
+    void cal_s2(const Input& input, State& state);
+    double funcs2(double x, const Input& input, State& state);
+    void cal_n3(const Input& input, State& state);
+    double funcn3(double x, const Input& input, State& state);
+    void cal_q5(const Input& input, State& state);
+    double funcq5(double x, const Input& input, State& state);
+    void cal_q1a(const Input& input, State& state);
+    void cal_r6(const Input& input, State& state);
+    double funcr6(double x, const Input& input, State& state);
+    void cal_r1a(const Input& input, State& state);
+    void cal_v7(const Input& input, State& state);
+    double funcv7(double x, const Input& input, State& state);
+    void cal_v1a(const Input& input, State& state);
+    void cal_u8(const Input& input, State& state);
+    double funcu8(double x, const Input& input, State& state);
+    void cal_u1a(const Input& input, State& state);
+    void cal_w13(const Input& input, State& state);
+    double funcw13(double x, const Input& input, State& state);
+    void cal_w1a(const Input& input, State& state);
+    void cal_nap(State& state);
+
     /**
      * @brief Reverse solver for NH4-SO4-H2O systems (Case 1).
      * 
