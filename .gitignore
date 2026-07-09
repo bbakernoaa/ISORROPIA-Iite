@@ -1,4 +1,4 @@
-# Compiled Object files, Static/Dynamic Libraries
+# Compiled Object files, Static/Dynamic Libraries and executables
 *.o
 *.obj
 *.a
@@ -6,6 +6,9 @@
 *.so
 *.dylib
 *.dll
+isolite
+*.act
+*.wat
 
 # CMake build directories and artifacts
 build/
