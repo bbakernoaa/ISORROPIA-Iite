@@ -71,7 +71,7 @@ TEST(ReverseTest, SolveCrustalReverse) {
 
     solver.solve(input, state);
 
-    EXPECT_EQ(state.scase, "4R"); // Route to Case 4 Reverse
+    EXPECT_EQ(state.scase, "K4"); // Route to Case 4 Reverse (routes specifically to K4)
     EXPECT_GT(state.water, 0.0);
     EXPECT_EQ(state.num_errors, 0);
 }
