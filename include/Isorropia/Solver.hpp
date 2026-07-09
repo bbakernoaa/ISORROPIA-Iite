@@ -539,6 +539,20 @@ private:
      * Maps to legacy Fortran 'SUBROUTINE ISRP2R' in 'isorev.f'.
      */
     void isrp2r(const Input& input, State& state);
+
+    /**
+     * @brief Reverse solver for Na-NH4-SO4-NO3-Cl-H2O marine systems (Case 3).
+     * 
+     * Maps to legacy Fortran 'SUBROUTINE ISRP3R' in 'isorev.f'.
+     */
+    void isrp3r(const Input& input, State& state);
+
+    /**
+     * @brief Reverse solver for Na-NH4-SO4-NO3-Cl-Ca-K-Mg-H2O crustal systems (Case 4).
+     * 
+     * Maps to legacy Fortran 'SUBROUTINE ISRP4R' in 'isorev.f'.
+     */
+    void isrp4r(const Input& input, State& state);
 };
 
 } // namespace Isorropia

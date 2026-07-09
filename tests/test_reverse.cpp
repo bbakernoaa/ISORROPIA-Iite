@@ -37,3 +37,41 @@ TEST(ReverseTest, SolveNH4SO4NO3Reverse) {
     EXPECT_EQ(state.scase, "2R"); // Route to Case 2 Reverse
     EXPECT_EQ(state.num_errors, 0);
 }
+
+TEST(ReverseTest, SolveMarineReverse) {
+    Isorropia::Solver solver;
+    Isorropia::Input input;
+    Isorropia::State state;
+
+    // Set up Case 3 Marine reverse
+    input.w[0] = 1.0; // Na
+    input.w[1] = 1.0; // H2SO4
+    input.w[4] = 1.0; // Cl
+    input.iprob = 1; // Reverse!
+    input.rh = 0.80;
+
+    solver.solve(input, state);
+
+    EXPECT_EQ(state.scase, "3R"); // Route to Case 3 Reverse
+    EXPECT_GT(state.water, 0.0);
+    EXPECT_EQ(state.num_errors, 0);
+}
+
+TEST(ReverseTest, SolveCrustalReverse) {
+    Isorropia::Solver solver;
+    Isorropia::Input input;
+    Isorropia::State state;
+
+    // Set up Case 4 Crustal reverse
+    input.w[0] = 1.0; // Na
+    input.w[1] = 2.0; // H2SO4
+    input.w[5] = 0.5; // Ca
+    input.iprob = 1; // Reverse!
+    input.rh = 0.80;
+
+    solver.solve(input, state);
+
+    EXPECT_EQ(state.scase, "4R"); // Route to Case 4 Reverse
+    EXPECT_GT(state.water, 0.0);
+    EXPECT_EQ(state.num_errors, 0);
+}

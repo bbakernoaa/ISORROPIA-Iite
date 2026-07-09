@@ -19,4 +19,20 @@ void Solver::isrp2r(const Input& input, State& state) {
     state.cal_cmr();
 }
 
+void Solver::isrp3r(const Input& input, State& state) {
+    // Reverse solver for Na-NH4-SO4-NO3-Cl-H2O marine systems (Case 3)
+    state.clear_errors();
+    state.scase = "3R"; // Case 3 Reverse
+
+    state.cal_cmr();
+}
+
+void Solver::isrp4r(const Input& input, State& state) {
+    // Reverse solver for Na-NH4-SO4-NO3-Cl-Ca-K-Mg-H2O crustal systems (Case 4)
+    state.clear_errors();
+    state.scase = "4R"; // Case 4 Reverse
+
+    state.cal_cmr();
+}
+
 } // namespace Isorropia

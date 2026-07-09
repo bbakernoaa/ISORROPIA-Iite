@@ -28,9 +28,9 @@ void Solver::solve(const Input& input, State& state) {
     if (input.iprob == 1) {
         // Reverse problem routing
         if (crustal_sum > state.tiny) {
-            state.push_error(104, "Case 4 Reverse is not implemented yet in the port skeleton");
+            isrp4r(input, state);
         } else if (marine_sum > state.tiny) {
-            state.push_error(103, "Case 3 Reverse is not implemented yet in the port skeleton");
+            isrp3r(input, state);
         } else if (nitrate_sum > state.tiny) {
             isrp2r(input, state);
         } else {
