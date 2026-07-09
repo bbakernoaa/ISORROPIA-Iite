@@ -478,6 +478,13 @@ struct State {
      * Replaces Fortran 'SUBROUTINE CALCMR'.
      */
     void cal_cmr();
+
+    /**
+     * @brief Resets activity coefficient arrays to default value of 0.1 if greater than threshold.
+     * 
+     * Replaces Fortran 'SUBROUTINE RSTGAMP'.
+     */
+    void rstgamp();
 };
 
 /**
@@ -526,6 +533,14 @@ private:
     void isrp4f(const Input& input, State& state);
 
 private:
+    // Case 1 Forward Speciation Solvers
+    void cal_ca2(const Input& input, State& state);
+    double funca2(double omegi, const Input& input, State& state);
+    void cal_cb4(const Input& input, State& state);
+    void cal_cb1a(const Input& input, State& state);
+    void cal_cc2(const Input& input, State& state);
+    void cal_cnh3(const Input& input, State& state);
+
     /**
      * @brief Reverse solver for NH4-SO4-H2O systems (Case 1).
      * 

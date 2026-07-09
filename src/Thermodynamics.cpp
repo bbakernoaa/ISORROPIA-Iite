@@ -317,4 +317,21 @@ void State::cal_cmr() {
     water = std::max(water, tiny);
 }
 
+void State::rstgamp() {
+    double gthresh = 100.0;
+    double gmax = 0.1;
+    for (size_t i = 0; i < 23; ++i) {
+        gmax = std::max(gmax, gama[i]);
+    }
+    if (gmax > gthresh) {
+        for (size_t i = 0; i < 23; ++i) {
+            gama[i] = 1.0e-1;
+            gamin[i] = great;
+            gamou[i] = great;
+        }
+        calaou = true;
+        frst = true;
+    }
+}
+
 } // namespace Isorropia
