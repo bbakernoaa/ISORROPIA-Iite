@@ -571,6 +571,22 @@ private:
     void cal_cha(const Input& input, State& state);
     void cal_cnha(const Input& input, State& state);
     void poly3(double a1, double a2, double a3, double& root, int& islv, State& state);
+    void cal_claq(double cli, double hi, double& delt, State& state);
+    void cal_niaq(double no3i, double hi, double& delt, State& state);
+
+    // Case 3 Forward Speciation Solvers
+    void cal_cg5(const Input& input, State& state);
+    double funcg5a(double x, const Input& input, State& state);
+    void cal_ch6(const Input& input, State& state);
+    double funch6a(double x, const Input& input, State& state);
+    void cal_ci6(const Input& input, State& state);
+    void cal_ci1a(const Input& input, State& state);
+    void cal_cj3(const Input& input, State& state);
+    void cal_cph(double gg, double& hi, double& ohi, State& state);
+
+    // Reverse Solvers Helpers
+    void cal_cnh3p(State& state);
+    void cal_cnhp(const Input& input, State& state);
 
     /**
      * @brief Reverse solver for NH4-SO4-H2O systems (Case 1).
