@@ -7,7 +7,7 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-add_executable(isorropia_tests test_main.cpp)
+add_executable(isorropia_tests test_main.cpp test_state.cpp)
 target_link_libraries(isorropia_tests PRIVATE isorropia gtest_main)
 
 include(GoogleTest)
