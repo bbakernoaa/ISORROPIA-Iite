@@ -456,6 +456,13 @@ struct State {
      * @param g0 Output array populated with 23 binary activity coefficients.
      */
     void km_tab(double ionic_strength, double temp_k, std::array<double, 23>& g0);
+
+    /**
+     * @brief Computes multicomponent activity coefficients for pure Case 1 systems.
+     * 
+     * Replaces Fortran 'SUBROUTINE CALCACT1'.
+     */
+    void cal_act1();
 };
 
 /**

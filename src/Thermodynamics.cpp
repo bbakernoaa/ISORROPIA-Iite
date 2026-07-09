@@ -26,6 +26,12 @@ void State::initialize_constants() {
         164.0, 111.0, 174.0, 136.0, 101.0, 74.5,  120.0, 148.0, 95.0,  18.0,
         0.0,   0.0,   0.0
     };
+
+    // ZZ initialization (NPAIR=23 valences)
+    zz = {1, 2, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 2, 4, 2, 2, 2, 1, 1, 1, 4, 2, 2};
+
+    // Z initialization (NIONS=10 valences)
+    z = {1, 1, 1, 1, 1, 2, 1, 2, 1, 2};
 }
 
 void State::initialize_drh() {
