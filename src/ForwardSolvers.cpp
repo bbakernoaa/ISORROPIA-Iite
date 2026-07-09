@@ -1208,12 +1208,301 @@ void Solver::cal_cph(double gg, double& hi, double& ohi, State& state) {
 }
 
 void Solver::isrp4f(const Input& input, State& state) {
-    // Forward solver for Na-NH4-SO4-NO3-Cl-Ca-K-Mg-H2O crustal systems (Case 4)
     state.clear_errors();
-    state.scase = "4F"; // Case 4 Forward
+    state.scase = "4F";
+    state.actmod = 4;
 
-    // Establish crustal solver skeleton and execute multi-component ZSR water iterations
-    state.cal_cmr();
+    // 1. Sequential adjustments for excess cations (replicates lines 265-330 of isofwd.f)
+    double rest = 2.0 * state.w[1] + state.w[3] + state.w[4];
+    if (state.w[0] + state.w[5] + state.w[6] + state.w[7] > rest) {
+        double ccaso4_i  = std::min(state.w[1], state.w[5]);
+        double frso4_i   = std::max(state.w[1] - ccaso4_i, 0.0);
+        double ca_fr_i   = std::max(state.w[5] - ccaso4_i, 0.0);
+        double ccano32_i = std::min(ca_fr_i, 0.5 * state.w[3]);
+        ca_fr_i          = std::max(ca_fr_i - ccano32_i, 0.0);
+        double no3_fr_i  = std::max(state.w[3] - 2.0 * ccano32_i, 0.0);
+        double ccacl2_i  = std::min(ca_fr_i, 0.5 * state.w[4]);
+        double cl_fr_i   = std::max(state.w[4] - 2.0 * ccacl2_i, 0.0);
+        double rest1     = 2.0 * frso4_i + no3_fr_i + cl_fr_i;
+
+        double cna2so4_i = std::min(frso4_i, 0.5 * state.w[0]);
+        frso4_i          = std::max(frso4_i - cna2so4_i, 0.0);
+        double na_fr_i   = std::max(state.w[0] - 2.0 * cna2so4_i, 0.0);
+        double cnacl_i   = std::min(na_fr_i, cl_fr_i);
+        na_fr_i          = std::max(na_fr_i - cnacl_i, 0.0);
+        cl_fr_i          = std::max(cl_fr_i - cnacl_i, 0.0);
+        double cnano3_i  = std::min(na_fr_i, no3_fr_i);
+        double rest2     = 2.0 * frso4_i + no3_fr_i + cl_fr_i;
+
+        double cmgso4_i  = std::min(frso4_i, state.w[7]);
+        double fr_mg_i   = std::max(state.w[7] - cmgso4_i, 0.0);
+        frso4_i          = std::max(frso4_i - cmgso4_i, 0.0);
+        double cmgno32_i = std::min(fr_mg_i, 0.5 * no3_fr_i);
+        fr_mg_i          = std::max(fr_mg_i - cmgno32_i, 0.0);
+        no3_fr_i         = std::max(no3_fr_i - 2.0 * cmgno32_i, 0.0);
+        double cmgcl2_i  = std::min(fr_mg_i, 0.5 * cl_fr_i);
+        double rest3     = 2.0 * frso4_i + no3_fr_i + cl_fr_i;
+
+        if (state.w[5] > rest) {
+            state.w[5] = (1.0 - 1e-6) * rest;
+            state.w[0] = 0.0;
+            state.w[6] = 0.0;
+            state.w[7] = 0.0;
+            state.push_error(51, "ISRP4F: CA, NA, K, MG IN EXCESS");
+        } else if (state.w[0] > rest1) {
+            state.w[0] = (1.0 - 1e-6) * rest1;
+            state.w[6] = 0.0;
+            state.w[7] = 0.0;
+            state.push_error(52, "ISRP4F: NA, K, MG IN EXCESS");
+        } else if (state.w[7] > rest2) {
+            state.w[7] = (1.0 - 1e-6) * rest2;
+            state.w[6] = 0.0;
+            state.push_error(53, "ISRP4F: K, MG IN EXCESS");
+        } else if (state.w[7] > rest3) {
+            state.w[6] = (1.0 - 1e-6) * rest3;
+            state.push_error(54, "ISRP4F: K IN EXCESS");
+        }
+    }
+
+    double so4rat  = (state.w[0] + state.w[2] + state.w[5] + state.w[6] + state.w[7]) / state.w[1];
+    double crnarat = (state.w[0] + state.w[5] + state.w[6] + state.w[7]) / state.w[1];
+    double crrat   = (state.w[5] + state.w[6] + state.w[7]) / state.w[1];
+
+    if (so4rat >= 2.0 && crnarat < 2.0) {
+        state.scase = "O7";
+        cal_co7(input, state);
+    }
+    else if (so4rat >= 2.0 && crnarat >= 2.0 && crrat <= 2.0) {
+        state.scase = "M8";
+        cal_cm8(input, state);
+    }
+    else if (so4rat >= 2.0 && crnarat >= 2.0 && crrat > 2.0) {
+        state.scase = "P13";
+        cal_cp13(input, state);
+    }
+    else if (so4rat >= 1.0 && so4rat < 2.0) {
+        state.scase = "L9";
+        cal_cl9(input, state);
+        cal_cnha(input, state);
+        cal_cnh3(input, state);
+    }
+    else {
+        state.scase = "K4";
+        cal_ck4(input, state);
+        cal_cnha(input, state);
+        cal_cnh3(input, state);
+    }
+}
+
+//=======================================================================
+// CASE O7 - SULFATE POOR, DUST & SODIUM POOR METASTABLE LIQUID Speciation
+//=======================================================================
+void Solver::cal_co7(const Input& input, State& state) {
+    state.calaou = true;
+    state.chi9 = std::min(state.w[5], state.w[1]); // CCASO4
+    double so4fr = std::max(state.w[1] - state.chi9, 0.0);
+    state.chi7 = std::min(0.5 * state.w[6], so4fr); // CK2SO4
+    so4fr        = std::max(so4fr - state.chi7, 0.0);
+    state.chi1 = std::min(0.5 * state.w[0], so4fr); // NA2SO4
+    so4fr        = std::max(so4fr - state.chi1, 0.0);
+    state.chi8 = std::min(state.w[7], so4fr); // CMGSO4
+    so4fr        = std::max(so4fr - state.chi8, 0.0);
+    state.chi3 = 0.0;
+    state.chi5 = state.w[3]; // Total Nitrate
+    state.chi6 = state.w[4]; // Total Chloride
+    state.chi2 = std::max(so4fr, 0.0);
+    state.chi4 = std::max(state.w[2] - 2.0 * state.chi2, 0.0);
+
+    state.psi1 = state.chi1;
+    state.psi2 = state.chi2;
+    state.psi3 = 0.0;
+    state.psi4 = 0.0;
+    state.psi5 = 0.0;
+    state.psi6 = 0.0;
+    state.psi7 = state.chi7;
+    state.psi8 = state.chi8;
+
+    double psi6lo = state.tiny;
+    double psi6hi = state.chi6 - state.tiny;
+
+    state.water = state.chi2 / state.m0[3] + state.chi1 / state.m0[1] + state.chi7 / state.m0[16] + state.chi8 / state.m0[20];
+    state.water = std::max(state.water, state.tiny);
+
+    // Initial values for bisection
+    double x1 = psi6lo;
+    double y1 = funco7(x1, input, state);
+
+    if (state.chi6 <= state.tiny) {
+        if (state.molal[1] > state.tiny && state.molal[5] > state.tiny) {
+            double delta = 0.0;
+            cal_chs4(state.molal[1], state.molal[5], 0.0, delta, state);
+            state.molal[1] -= delta;
+            state.molal[5] -= delta;
+            state.molal[6] = delta;
+        }
+        return;
+    }
+
+    int ndiv = 5;
+    double dx = (psi6hi - psi6lo) / static_cast<double>(ndiv);
+    double x2 = x1;
+    double y2 = y1;
+    bool bracket_found = false;
+
+    for (int i = 1; i <= ndiv; ++i) {
+        x2 = x1 + dx;
+        y2 = funco7(x2, input, state);
+        if (y1 * y2 < 0.0) {
+            bracket_found = true;
+            break;
+        }
+        x1 = x2;
+        y1 = y2;
+    }
+
+    if (!bracket_found) {
+        if (std::abs(y2) > 1e-6) {
+            state.rstgamp();
+            y2 = funco7(psi6lo, input, state);
+        }
+        if (state.molal[1] > state.tiny && state.molal[5] > state.tiny) {
+            double delta = 0.0;
+            cal_chs4(state.molal[1], state.molal[5], 0.0, delta, state);
+            state.molal[1] -= delta;
+            state.molal[5] -= delta;
+            state.molal[6] = delta;
+        }
+        return;
+    }
+
+    // Perform Bisection
+    double eps = 1e-6;
+    int maxit = 100;
+    double x3 = 0.5 * (x1 + x2);
+    double y3 = 0.0;
+    bool converged = false;
+
+    for (int it = 0; it < maxit; ++it) {
+        x3 = 0.5 * (x1 + x2);
+        state.rstgamp();
+        y3 = funco7(x3, input, state);
+        if (y1 * y3 <= 0.0) {
+            y2 = y3;
+            x2 = x3;
+        } else {
+            y1 = y3;
+            x1 = x3;
+        }
+        if (std::abs(x2 - x1) <= eps * x1) {
+            converged = true;
+            break;
+        }
+    }
+
+    if (!converged) {
+        state.push_error(2, "CALCO7");
+    }
+
+    x3 = 0.5 * (x1 + x2);
+    state.rstgamp();
+    y3 = funco7(x3, input, state);
+
+    if (state.molal[1] > state.tiny && state.molal[5] > state.tiny) {
+        double delta = 0.0;
+        cal_chs4(state.molal[1], state.molal[5], 0.0, delta, state);
+        state.molal[1] -= delta;
+        state.molal[5] -= delta;
+        state.molal[6] = delta;
+    }
+}
+
+double Solver::funco7(double x, const Input& input, State& state) {
+    state.psi6 = x;
+    state.frst = true;
+    state.calain = true;
+
+    int nsweep = 4;
+    for (int sweep = 0; sweep < nsweep; ++sweep) {
+        state.a4 = (state.xk2 / state.xkw) * state.r * state.temp * std::pow(state.gama[9] / state.gama[4], 2.0);
+        state.a5 = state.xk4 * state.r * state.temp * std::pow(state.water / state.gama[9], 2.0);
+        state.a6 = state.xk3 * state.r * state.temp * std::pow(state.water / state.gama[10], 2.0);
+
+        if (state.chi5 >= state.tiny) {
+            state.psi5 = state.psi6 * state.chi5 / ((state.a6 / state.a5) * (state.chi6 - state.psi6) + state.psi6);
+            state.psi5 = std::min(state.psi5, state.chi5);
+        } else {
+            state.psi5 = state.tiny;
+        }
+
+        if (state.w[2] > state.tiny) {
+            double bb = -(state.chi4 + state.psi6 + state.psi5 + 1.0 / state.a4);
+            double cc = state.chi4 * (state.psi5 + state.psi6) - 2.0 * state.psi2 / state.a4;
+            double dd = std::max(bb * bb - 4.0 * cc, 0.0);
+            state.psi4 = 0.5 * (-bb - std::sqrt(dd));
+            state.psi4 = std::max(std::min(state.psi4, state.chi4), 0.0);
+        } else {
+            state.psi4 = state.tiny;
+        }
+
+        state.molal[0] = 2.0 * state.psi1;                     // Na+
+        state.molal[2] = 2.0 * state.psi2 + state.psi4;        // NH4+
+        state.molal[4] = state.psi6;                           // Cl-
+        state.molal[5] = state.psi1 + state.psi2 + state.psi7 + state.psi8; // SO4--
+        state.molal[6] = 0.0;                                  // HSO4-
+        state.molal[3] = state.psi5;                           // NO3-
+        state.molal[7] = 0.0;                                  // Ca++
+        state.molal[8] = 2.0 * state.psi7;                     // K+
+        state.molal[9] = state.psi8;                           // Mg++
+
+        double smin = 2.0 * state.molal[5] + state.molal[3] + state.molal[4] 
+                    - state.molal[0] - state.molal[2] - state.molal[8] - 2.0 * state.molal[9];
+        double hi = 0.0, ohi = 0.0;
+        cal_cph(smin, hi, ohi, state);
+        state.molal[1] = hi;
+
+        state.gnh3  = std::max(state.chi4 - state.psi4, state.tiny);
+        state.ghno3 = std::max(state.chi5 - state.psi5, state.tiny);
+        state.ghcl  = std::max(state.chi6 - state.psi6, state.tiny);
+
+        state.cna2so4 = 0.0;
+        state.cnh42s4 = 0.0;
+        state.cnh4no3 = 0.0;
+        state.cnh4cl  = 0.0;
+        state.ck2so4  = 0.0;
+        state.cmgso4  = 0.0;
+        state.ccaso4  = state.chi9;
+
+        state.cal_cmr();
+
+        if (state.frst && state.calaou || !state.frst && state.calain) {
+            state.cal_act2();
+        } else {
+            break;
+        }
+    }
+
+    return state.molal[1] * state.molal[4] / state.ghcl / state.a6 - 1.0;
+}
+
+void Solver::cal_cm8(const Input& input, State& state) {
+    state.push_error(99, "cal_cm8 stub called");
+}
+double Solver::funcm8(double x, const Input& input, State& state) {
+    return 0.0;
+}
+void Solver::cal_cp13(const Input& input, State& state) {
+    state.push_error(99, "cal_cp13 stub called");
+}
+double Solver::funcp13(double x, const Input& input, State& state) {
+    return 0.0;
+}
+void Solver::cal_cl9(const Input& input, State& state) {
+    state.push_error(99, "cal_cl9 stub called");
+}
+void Solver::cal_cl1a(const Input& input, State& state) {
+}
+void Solver::cal_ck4(const Input& input, State& state) {
+    state.push_error(99, "cal_ck4 stub called");
 }
 
 } // namespace Isorropia

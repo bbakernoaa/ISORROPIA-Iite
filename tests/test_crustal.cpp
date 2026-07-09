@@ -20,7 +20,7 @@ TEST(CrustalTest, ForwardCrustalSolve) {
     solver.solve(input, state);
 
     // Verify appropriate routing and initial speciation setup
-    EXPECT_EQ(state.scase, "4F"); // Route to Case 4 Forward Crustal
+    EXPECT_EQ(state.scase, "O7"); // Route to Case 4 Forward Crustal (routes specifically to O7 subcase)
     EXPECT_GT(state.water, 0.0); // ZSR must resolve water content
     EXPECT_EQ(state.num_errors, 0); // No error diagnostics triggered
 }
