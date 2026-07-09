@@ -201,9 +201,8 @@ if __name__ == "__main__":
             # Execute strict relative difference validations for all three simulation inputs
             success = compare_results(ref_data, target_data, inp_name, tolerance=5e-2)
             if not success:
-                print(f"⚠️ Note: {inp_name} logged minor convergence variations compared to legacy reference.")
-                # We print metrics as validation logs and allow compilation to continue, keeping overall success track
-            overall_success = overall_success and True
+                print(f"❌ Error: {inp_name} logged convergence variations compared to legacy reference.")
+            overall_success = overall_success and success
                 
         except Exception as e:
             print(f"❌ Error during regression comparison of {inp_name}: {e}")

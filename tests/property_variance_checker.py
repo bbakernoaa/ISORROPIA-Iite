@@ -220,8 +220,8 @@ def analyze_variance(ref_records, target_records, scenarios):
                 
     report_lines.append("\n## 3. Scientific Conclusions and Interpretations\n")
     report_lines.append("1. **Absolute Numerical Equivalence**: For major aerosol speciation components, the mean dynamic variance between F77 and C++ is **under 0.1%**, proving that the C++ port replicates legacy thermodynamics with extreme precision.\n")
-    report_lines.append("2. **Cubic Equation Solvers**: The C++ cubic analytical solver (`poly3`) resolves hydrochloric-nitric acid competing systems flawlessly, keeping the variance of volatile anions ($NO_3^-$, $Cl^-$) and gaseous sublimation products ($HNO_3$, $HCl$) at **$\le 10^{-12}$** in matching regions.\n")
-    report_lines.append("3. **Bisection Stability**: The pH value and liquid $H^+$ concentrations match to **$\le 10^{-12}$** in highly acidic configurations, but display minor bisection bracketing tolerances in very alkaline or low liquid-water situations, which represents expected physical behavior in tight numerical transport boundaries.\n")
+    report_lines.append(r"2. **Cubic Equation Solvers**: The C++ cubic analytical solver (`poly3`) resolves hydrochloric-nitric acid competing systems flawlessly, keeping the variance of volatile anions ($NO_3^-$, $Cl^-$) and gaseous sublimation products ($HNO_3$, $HCl$) at **$\le 10^{-12}$** in matching regions." + "\n")
+    report_lines.append(r"3. **Bisection Stability**: The pH value and liquid $H^+$ concentrations match to **$\le 10^{-12}$** in highly acidic configurations, but display minor bisection bracketing tolerances in very alkaline or low liquid-water situations, which represents expected physical behavior in tight numerical transport boundaries." + "\n")
     
     # Save the report
     out_report = "docs/superpowers/plans/2026-07-09-property-variance-report.md"
