@@ -85,7 +85,9 @@ if __name__ == "__main__":
     print("=== ISORROPIA-Lite Regression Test Harness ===")
     
     # We will look for reference files in 'isolite1_0_src' for validation
-    ref_file = "isolite1_0_src/test1.txt"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    ref_file = os.path.join(script_dir, "..", "isolite1_0_src", "test1.txt")
+    
     if not os.path.exists(ref_file):
         print(f"Reference file {ref_file} not found. Please compile and run the Fortran executable first.")
         sys.exit(1)

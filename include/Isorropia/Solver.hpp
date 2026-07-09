@@ -211,7 +211,7 @@ struct State {
      */
     double water = 0.0;
     
-    float ionic = 0.0f;   ///< Total ionic strength of liquid aerosol. Maps to Fortran 'IONIC'.
+    double ionic = 0.0;   ///< Total ionic strength of liquid aerosol. Maps to Fortran 'IONIC'.
 
     /**
      * @brief Individual component contributions of salts/organics to liquid water content.
