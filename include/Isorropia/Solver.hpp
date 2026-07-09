@@ -446,6 +446,16 @@ struct State {
      * Replicates calculations and corrections from Fortran subroutines (van 't Hoff equation).
      */
     void calculate_equilibrium_constants();
+
+    /**
+     * @brief Computes binary activity coefficients using pre-tabulated Kusik-Meissner grids.
+     * 
+     * Replaces Fortran 'SUBROUTINE KMTAB'.
+     * @param ionic_strength Total ionic strength of the solution.
+     * @param temp_k Current temperature of the cell in Kelvin (K).
+     * @param g0 Output array populated with 23 binary activity coefficients.
+     */
+    void km_tab(double ionic_strength, double temp_k, std::array<double, 23>& g0);
 };
 
 /**
