@@ -39,3 +39,15 @@ TEST(StateTest, InitializeConstantsAndWeights) {
     EXPECT_DOUBLE_EQ(state.wmw[1], 98.0); // H2SO4
     EXPECT_DOUBLE_EQ(state.smw[5], 132.0); // (NH4)2SO4
 }
+
+TEST(StateTest, WaterActivityGrids) {
+    Isorropia::State state;
+    state.initialize_water_activities();
+    
+    // Assert copy fidelity for known parsed tables (e.g. awab and awac)
+    EXPECT_NEAR(state.awab[0], 3.128400e+02, 1e-6);
+    EXPECT_NEAR(state.awab[99], 1.000000e-01, 1e-6);
+    EXPECT_NEAR(state.awac[0], 1.209000e+03, 1e-6);
+    EXPECT_NEAR(state.awac[99], 1.000000e-01, 1e-6);
+    EXPECT_NEAR(state.awcs[0], 0.0, 1e-15); // should be filled with zero
+}

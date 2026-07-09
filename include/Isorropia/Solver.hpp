@@ -347,6 +347,13 @@ struct State {
      * Replicates block data initialization in Fortran 'BLOCK DATA BLKISO'.
      */
     void initialize_constants();
+
+    /**
+     * @brief Initializes ZSR water activity lookup tables.
+     * 
+     * Replicates pure salt data grids from Fortran 'BLOCK DATA BLKISO'.
+     */
+    void initialize_water_activities();
 };
 
 /**
