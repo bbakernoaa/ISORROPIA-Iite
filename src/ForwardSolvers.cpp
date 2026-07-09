@@ -1325,6 +1325,8 @@ void Solver::cal_co7(const Input& input, State& state) {
     double psi6lo = state.tiny;
     double psi6hi = state.chi6 - state.tiny;
 
+    state.cal_cmr(); // Populate m0 lookups safely before dividing
+
     state.water = state.chi2 / state.m0[3] + state.chi1 / state.m0[1] + state.chi7 / state.m0[16] + state.chi8 / state.m0[20];
     state.water = std::max(state.water, state.tiny);
 
@@ -1511,6 +1513,16 @@ void Solver::cal_cm8(const Input& input, State& state) {
     state.chi5   = std::max(state.w[3] - state.chi8, 0.0);       // HNO3(g)
     state.chi7   = std::min(std::max(frna - state.chi8, 0.0), state.w[4]); // CNACL
     state.chi6   = std::max(state.w[4] - state.chi7, 0.0);       // HCL(g)
+
+    state.cal_cmr(); // Populate m0 lookups safely before dividing
+
+    state.water = state.chi1 / state.m0[1] + state.chi7 / state.m0[0] + state.chi8 / state.m0[2] +
+                  state.chi9 / state.m0[16] + state.chi10 / state.m0[20];
+    if (std::isnan(state.water)) {
+        std::printf("NAN FOUND inside cal_cm8: chi1=%e, m0[1]=%e, chi7=%e, m0[0]=%e, chi8=%e, m0[2]=%e, chi9=%e, m0[16]=%e, chi10=%e, m0[20]=%e\n",
+                    state.chi1, state.m0[1], state.chi7, state.m0[0], state.chi8, state.m0[2], state.chi9, state.m0[16], state.chi10, state.m0[20]);
+    }
+    state.water = std::max(state.water, state.tiny);
 
     double psi6lo = state.tiny;
     double psi6hi = state.chi6 - state.tiny;
@@ -1710,6 +1722,14 @@ void Solver::cal_cp13(const Input& input, State& state) {
     state.chi3    = 0.0;                                                  // CNH4CL
     state.chi1    = 0.0;
     state.chi2    = 0.0;
+
+    state.cal_cmr(); // Populate m0 lookups safely before dividing
+
+    state.water = state.chi9 / state.m0[16] + state.chi10 / state.m0[20] + state.chi7 / state.m0[0] +
+                  state.chi12 / state.m0[14] + state.chi17 / state.m0[15] + state.chi15 / state.m0[21] +
+                  state.chi16 / state.m0[22] + state.chi8 / state.m0[2] + state.chi14 / state.m0[19] +
+                  state.chi13 / state.m0[18];
+    state.water = std::max(state.water, state.tiny);
 
     double psi6lo = state.tiny;
     double psi6hi = state.chi6 - state.tiny;

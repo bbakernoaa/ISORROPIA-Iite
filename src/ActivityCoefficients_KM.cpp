@@ -8586,6 +8586,10 @@ void State::km_tab(double ionic_strength, double temp_k, std::array<double, 23>&
 }
 
 void State::cal_act1() {
+    if (water <= tiny) {
+        gama.fill(1e-1);
+        return;
+    }
     // 1. Re-initialize Outer and Inner activity loops (Outer: only if FRST, Inner: always)
     if (frst) {
         for (size_t i = 6; i <= 8; ++i) {
@@ -8736,6 +8740,10 @@ void State::cal_act1() {
 }
 
 void State::cal_act2() {
+    if (water <= tiny) {
+        gama.fill(1e-1);
+        return;
+    }
     // 1. Re-initialize Outer and Inner activity loops (Outer: only if FRST, Inner: always)
     if (frst) {
         for (size_t i = 6; i <= 9; ++i) {
@@ -8888,6 +8896,10 @@ void State::cal_act2() {
 }
 
 void State::cal_act3() {
+    if (water <= tiny) {
+        gama.fill(1e-1);
+        return;
+    }
     // 1. Re-initialize Outer and Inner activity loops (Outer: only if FRST, Inner: always)
     if (frst) {
         for (size_t i = 0; i < 13; ++i) {
@@ -9003,6 +9015,10 @@ void State::cal_act3() {
 }
 
 void State::cal_act4() {
+    if (water <= tiny) {
+        gama.fill(1e-1);
+        return;
+    }
     // 1. Re-initialize Outer and Inner activity loops (Outer: only if FRST, Inner: always)
     if (frst) {
         for (size_t i = 0; i < 23; ++i) {

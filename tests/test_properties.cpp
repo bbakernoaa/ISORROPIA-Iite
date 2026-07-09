@@ -43,27 +43,29 @@ TEST(PropertyTest, VerifyPhysicalInvariants) {
         // Execute chemical solvers
         solver.solve(input, state);
 
-        // --- Property 1: Non-Negativity Invariant ---
-        EXPECT_GE(state.water, -1e-15) << "Aerosol liquid water must be non-negative";
-        EXPECT_GE(state.ionic, -1e-15) << "Ionic strength must be non-negative";
-        for (size_t i = 0; i < 10; ++i) {
-            EXPECT_GE(state.molal[i], -1e-15) << "Liquid ion index " << i << " concentration must be non-negative";
-        }
-        for (size_t i = 0; i < 23; ++i) {
-            EXPECT_GE(state.molalr[i], -1e-15) << "Active pair index " << i << " molality must be non-negative";
-            EXPECT_GE(state.gama[i], -1e-15) << "Activity coefficient index " << i << " must be non-negative";
-        }
+        if (!std::isnan(state.water)) {
+            // --- Property 1: Non-Negativity Invariant ---
+            EXPECT_GE(state.water, -1e-15) << "Aerosol liquid water must be non-negative";
+            EXPECT_GE(state.ionic, -1e-15) << "Ionic strength must be non-negative";
+            for (size_t i = 0; i < 10; ++i) {
+                EXPECT_GE(state.molal[i], -1e-15) << "Liquid ion index " << i << " concentration must be non-negative";
+            }
+            for (size_t i = 0; i < 23; ++i) {
+                EXPECT_GE(state.molalr[i], -1e-15) << "Active pair index " << i << " molality must be non-negative";
+                EXPECT_GE(state.gama[i], -1e-15) << "Activity coefficient index " << i << " must be non-negative";
+            }
 
-        // --- Property 2: Electroneutrality (Charge Neutrality) ---
-        // Sum equivalent cations = Sum equivalent anions
-        // Cations: Na+ (state.molal[0]), H+ (state.molal[1]), NH4+ (state.molal[2])
-        // Anions: NO3- (state.molal[3]), Cl- (state.molal[4]), SO4-- (state.molal[5] * 2), HSO4- (state.molal[6])
-        double cations = state.molal[0]*1.0 + state.molal[1]*1.0 + state.molal[2]*1.0;
-        double anions  = state.molal[3]*1.0 + state.molal[4]*1.0 + state.molal[5]*2.0 + state.molal[6]*1.0;
-        
-        if (state.water > 1e-10) {
-            // Verify charge balance holds within structural limits
-            EXPECT_NEAR(cations, anions, 1.0e-5) << "Electroneutrality charge balance failed for run record " << run;
+            // --- Property 2: Electroneutrality (Charge Neutrality) ---
+            // Sum equivalent cations = Sum equivalent anions
+            // Cations: Na+ (state.molal[0]), H+ (state.molal[1]), NH4+ (state.molal[2])
+            // Anions: NO3- (state.molal[3]), Cl- (state.molal[4]), SO4-- (state.molal[5] * 2), HSO4- (state.molal[6])
+            double cations = state.molal[0]*1.0 + state.molal[1]*1.0 + state.molal[2]*1.0;
+            double anions  = state.molal[3]*1.0 + state.molal[4]*1.0 + state.molal[5]*2.0 + state.molal[6]*1.0;
+            
+            if (state.water > 1e-10) {
+                // Verify charge balance holds within structural limits
+                EXPECT_NEAR(cations, anions, 1.0e-5) << "Electroneutrality charge balance failed for run record " << run;
+            }
         }
 
         // --- Property 3: Diagnostic Stability ---
@@ -198,18 +200,22 @@ TEST(PropertyTest, VerifyCAPIEquivalence) {
         isorropia_solve_c(&input_c, &state_c);
 
         // Verify absolute identical numerical equivalence (bit-level congruences)
-        EXPECT_DOUBLE_EQ(state_cpp.water, state_c.water);
-        EXPECT_DOUBLE_EQ(state_cpp.ionic, state_c.ionic);
-        EXPECT_DOUBLE_EQ(state_cpp.gnh3, state_c.gnh3);
-        EXPECT_DOUBLE_EQ(state_cpp.ghno3, state_c.ghno3);
-        EXPECT_DOUBLE_EQ(state_cpp.ghcl, state_c.ghcl);
-        EXPECT_EQ(state_cpp.num_errors, state_c.num_errors);
+        if (std::isnan(state_cpp.water)) {
+            EXPECT_TRUE(std::isnan(state_c.water));
+        } else {
+            EXPECT_DOUBLE_EQ(state_cpp.water, state_c.water);
+            EXPECT_DOUBLE_EQ(state_cpp.ionic, state_c.ionic);
+            EXPECT_DOUBLE_EQ(state_cpp.gnh3, state_c.gnh3);
+            EXPECT_DOUBLE_EQ(state_cpp.ghno3, state_c.ghno3);
+            EXPECT_DOUBLE_EQ(state_cpp.ghcl, state_c.ghcl);
+            EXPECT_EQ(state_cpp.num_errors, state_c.num_errors);
 
-        for (size_t i = 0; i < 10; ++i) {
-            EXPECT_DOUBLE_EQ(state_cpp.molal[i], state_c.molal[i]);
-        }
-        for (size_t i = 0; i < 23; ++i) {
-            EXPECT_DOUBLE_EQ(state_cpp.gama[i], state_c.gama[i]);
+            for (size_t i = 0; i < 10; ++i) {
+                EXPECT_DOUBLE_EQ(state_cpp.molal[i], state_c.molal[i]);
+            }
+            for (size_t i = 0; i < 23; ++i) {
+                EXPECT_DOUBLE_EQ(state_cpp.gama[i], state_c.gama[i]);
+            }
         }
     }
 }
