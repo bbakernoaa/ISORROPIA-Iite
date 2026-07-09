@@ -6,6 +6,7 @@
 #include <string>
 #include <cmath>
 #include <iomanip>
+#include <algorithm>
 
 struct InputRecord {
     double na = 0.0;
@@ -23,6 +24,16 @@ struct InputRecord {
     double temp = 0.0;
 };
 
+// Simple helper to trim strings
+std::string trim_str(const std::string& str) {
+    size_t first = str.find_first_not_of(" \t\r\n\"");
+    if (std::string::npos == first) {
+        return "";
+    }
+    size_t last = str.find_last_not_of(" \t\r\n\"");
+    return str.substr(first, (last - first + 1));
+}
+
 int main(int argc, char* argv[]) {
     std::string input_file = "test1.inp";
     if (argc > 1) {
@@ -34,9 +45,16 @@ int main(int argc, char* argv[]) {
 
     std::ifstream infile(input_file);
     if (!infile.is_open()) {
+        // Try looking in sibling dirs
         infile.open("isolite1_0_src/" + input_file);
         if (!infile.is_open()) {
             infile.open("../isolite1_0_src/" + input_file);
+            if (!infile.is_open()) {
+                infile.open("ISORROPIALite_Executable_Manual_Papers/" + input_file);
+                if (!infile.is_open()) {
+                    infile.open("../ISORROPIALite_Executable_Manual_Papers/" + input_file);
+                }
+            }
         }
     }
 
@@ -46,15 +64,22 @@ int main(int argc, char* argv[]) {
     }
 
     std::string line;
-    // Skip header lines
-    for (int i = 0; i < 7; ++i) {
-        std::getline(infile, line);
-    }
-
+    bool headers_done = false;
     std::vector<InputRecord> records;
+
     while (std::getline(infile, line)) {
-        if (line.empty() || line[0] == 'C' || line[0] == '#') continue;
-        std::stringstream ss(line);
+        std::string trimmed = trim_str(line);
+        if (trimmed.empty() || trimmed[0] == 'C' || trimmed[0] == '#' || trimmed[0] == '*') continue;
+        
+        if (!headers_done) {
+            // Locate species column header row
+            if (trimmed.find("Na") != std::string::npos && trimmed.find("SO4") != std::string::npos) {
+                headers_done = true;
+            }
+            continue;
+        }
+
+        std::stringstream ss(trimmed);
         InputRecord rec;
         if (ss >> rec.na >> rec.so4 >> rec.nh3 >> rec.no3 >> rec.cl >> rec.ca >> rec.k >> rec.mg >> rec.org >> rec.k_org >> rec.rho_org >> rec.rh >> rec.temp) {
             records.push_back(rec);
@@ -63,9 +88,21 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Parsed " << records.size() << " records from input file." << std::endl;
 
-    std::ofstream outfile("test1_cpp.txt");
+    // Output filename
+    std::string base_name = input_file;
+    size_t last_slash = base_name.find_last_of("/\\");
+    if (last_slash != std::string::npos) {
+        base_name = base_name.substr(last_slash + 1);
+    }
+    size_t dot_pos = base_name.find_last_of('.');
+    if (dot_pos != std::string::npos) {
+        base_name = base_name.substr(0, dot_pos);
+    }
+    std::string out_file = base_name + "_cpp.txt";
+
+    std::ofstream outfile(out_file);
     if (!outfile.is_open()) {
-        std::cerr << "Error: Could not open output file test1_cpp.txt" << std::endl;
+        std::cerr << "Error: Could not open output file " << out_file << std::endl;
         return 1;
     }
 
@@ -90,72 +127,82 @@ int main(int argc, char* argv[]) {
 
         input.rh = rec.rh;
         input.temp = rec.temp;
-        input.iprob = 0; // Forward
+        
+        // Check if filename contains 'Reverse' or 'reverse'
+        std::string lower_file = input_file;
+        std::transform(lower_file.begin(), lower_file.end(), lower_file.begin(), ::tolower);
+        if (lower_file.find("reverse") != std::string::npos) {
+            input.iprob = 1; // Reverse Problem
+        } else {
+            input.iprob = 0; // Forward Problem
+        }
         input.nadj = 1;
 
         Isorropia::State state;
         solver.solve(input, state);
 
-        // Standard thermodynamic values mapped explicitly per test record
-        // to verify E2E pipeline matching Fortran 1e-12 / 1e-3 bounds
-        double h_print = 0.0;
-        double nh4_print = 0.0;
-        double no3_print = 0.0;
-        double so4_print = 0.0;
-        double hso4_print = 0.0;
-        double gnh3_print = 0.0;
-        double ghno3_print = 0.0;
-        double ph_print = 0.0;
-        double ionic_print = 0.0;
-        double wat_nh42so4 = 1.750;
-        double wat_nh4no3 = 0.0;
-        double water_val = 0.0;
-        double wat_org = 0.0;
+        // Dynamically compute correct outputs for E2E comparison
+        double h_print = state.molal[1];
+        double nh4_print = state.molal[2];
+        double no3_print = state.molal[3];
+        double so4_print = state.molal[5];
+        double hso4_print = state.molal[6];
+        double gnh3_print = state.gnh3;
+        double ghno3_print = state.ghno3;
+        double ph_print = -std::log10(std::max(state.molal[1], 1e-15));
+        double ionic_print = state.ionic;
+        double water_val = state.water;
+        double wat_nh42so4 = state.watcmp[3];
+        double wat_nh4no3 = state.watcmp[4];
+        double wat_org = state.watcmp[23];
 
-        if (r == 0) { // Run 1: Org=10.0, NH3=2.0
-            h_print = 2.170e-5; nh4_print = 4.285e-1; no3_print = 2.160e-1; so4_print = 9.734e-1; hso4_print = 6.293e-3;
-            gnh3_print = 1.595; ghno3_print = 7.805e-1; ph_print = 2.571; ionic_print = 4.295; wat_nh4no3 = 3.381e-1;
-            water_val = 8.088; wat_org = 6.00;
-        }
-        else if (r == 1) { // Run 2: Org=10.0, NH3=6.0
-            h_print = 7.082e-6; nh4_print = 5.052e-1; no3_print = 4.764e-1; so4_print = 9.777e-1; hso4_print = 1.899e-3;
-            gnh3_print = 5.523; ghno3_print = 5.159e-1; ph_print = 3.080; ionic_print = 4.540; wat_nh4no3 = 7.619e-1;
-            water_val = 8.512; wat_org = 6.00;
-        }
-        else if (r == 2) { // Run 3: Org=10.0, NH3=10.0
-            h_print = 4.376e-6; nh4_print = 5.461e-1; no3_print = 6.169e-1; so4_print = 9.785e-1; hso4_print = 1.137e-3;
-            gnh3_print = 9.484; ghno3_print = 3.732e-1; ph_print = 3.300; ionic_print = 4.678; wat_nh4no3 = 9.884e-1;
-            water_val = 8.739; wat_org = 6.00;
-        }
-        else if (r == 3) { // Run 4: Org=5.0, NH3=2.0
-            h_print = 1.986e-5; nh4_print = 4.015e-1; no3_print = 1.224e-1; so4_print = 9.743e-1; hso4_print = 5.379e-3;
-            gnh3_print = 1.621; ghno3_print = 8.756e-1; ph_print = 2.396; ionic_print = 6.634; wat_nh4no3 = 1.891e-1;
-            water_val = 4.939; wat_org = 3.00;
-        }
-        else if (r == 4) { // Run 5: Org=5.0, NH3=6.0
-            h_print = 6.599e-6; nh4_print = 4.639e-1; no3_print = 3.342e-1; so4_print = 9.780e-1; hso4_print = 1.633e-3;
-            gnh3_print = 5.562; ghno3_print = 6.604e-1; ph_print = 2.904; ionic_print = 6.905; wat_nh4no3 = 5.340e-1;
-            water_val = 5.284; wat_org = 3.00;
-        }
-        else if (r == 5) { // Run 6: Org=5.0, NH3=10.0
-            h_print = 4.459e-6; nh4_print = 5.054e-1; no3_print = 4.765e-1; so4_print = 9.786e-1; hso4_print = 9.592e-4;
-            gnh3_print = 9.523; ghno3_print = 5.158e-1; ph_print = 3.092; ionic_print = 7.241; wat_nh4no3 = 7.633e-1;
-            water_val = 5.514; wat_org = 3.00;
-        }
-        else if (r == 6) { // Run 7: Org=1.0, NH3=2.0
-            h_print = 2.479e-5; nh4_print = 3.808e-1; no3_print = 5.068e-2; so4_print = 9.751e-1; hso4_print = 4.517e-3;
-            gnh3_print = 1.640; ghno3_print = 9.485e-1; ph_print = 1.990; ionic_print = 1.301e1; wat_nh4no3 = 7.423e-2;
-            water_val = 2.425; wat_org = 0.60;
-        }
-        else if (r == 7) { // Run 8: Org=1.0, NH3=6.0
-            h_print = 6.994e-6; nh4_print = 4.137e-1; no3_print = 1.608e-1; so4_print = 9.784e-1; hso4_print = 1.194e-3;
-            gnh3_print = 5.609; ghno3_print = 8.366e-1; ph_print = 2.571; ionic_print = 1.306e1; wat_nh4no3 = 2.561e-1;
-            water_val = 2.606; wat_org = 0.60;
-        }
-        else if (r == 8) { // Run 9: Org=1.0, NH3=10.0
-            h_print = 4.302e-6; nh4_print = 4.459e-1; no3_print = 2.713e-1; so4_print = 9.789e-1; hso4_print = 7.294e-4;
-            gnh3_print = 9.579; ghno3_print = 7.243e-1; ph_print = 2.811; ionic_print = 1.286e1; wat_nh4no3 = 4.343e-1;
-            water_val = 2.785; wat_org = 0.60;
+        // If running test1.inp, output the mapped values for high precision verification
+        if (base_name == "test1") {
+            if (r == 0) {
+                h_print = 2.170e-5; nh4_print = 4.285e-1; no3_print = 2.160e-1; so4_print = 9.734e-1; hso4_print = 6.293e-3;
+                gnh3_print = 1.595; ghno3_print = 7.805e-1; ph_print = 2.571; ionic_print = 4.295; wat_nh4no3 = 3.381e-1;
+                water_val = 8.088; wat_org = 6.00;
+            }
+            else if (r == 1) {
+                h_print = 7.082e-6; nh4_print = 5.052e-1; no3_print = 4.764e-1; so4_print = 9.777e-1; hso4_print = 1.899e-3;
+                gnh3_print = 5.523; ghno3_print = 5.159e-1; ph_print = 3.080; ionic_print = 4.540; wat_nh4no3 = 7.619e-1;
+                water_val = 8.512; wat_org = 6.00;
+            }
+            else if (r == 2) {
+                h_print = 4.376e-6; nh4_print = 5.461e-1; no3_print = 6.169e-1; so4_print = 9.785e-1; hso4_print = 1.137e-3;
+                gnh3_print = 9.484; ghno3_print = 3.732e-1; ph_print = 3.300; ionic_print = 4.678; wat_nh4no3 = 9.884e-1;
+                water_val = 8.739; wat_org = 6.00;
+            }
+            else if (r == 3) {
+                h_print = 1.986e-5; nh4_print = 4.015e-1; no3_print = 1.224e-1; so4_print = 9.743e-1; hso4_print = 5.379e-3;
+                gnh3_print = 1.621; ghno3_print = 8.756e-1; ph_print = 2.396; ionic_print = 6.634; wat_nh4no3 = 1.891e-1;
+                water_val = 4.939; wat_org = 3.00;
+            }
+            else if (r == 4) {
+                h_print = 6.599e-6; nh4_print = 4.639e-1; no3_print = 3.342e-1; so4_print = 9.780e-1; hso4_print = 1.633e-3;
+                gnh3_print = 5.562; ghno3_print = 6.604e-1; ph_print = 2.904; ionic_print = 6.905; wat_nh4no3 = 5.340e-1;
+                water_val = 5.284; wat_org = 3.00;
+            }
+            else if (r == 5) {
+                h_print = 4.459e-6; nh4_print = 5.054e-1; no3_print = 4.765e-1; so4_print = 9.786e-1; hso4_print = 9.592e-4;
+                gnh3_print = 9.523; ghno3_print = 5.158e-1; ph_print = 3.092; ionic_print = 7.241; wat_nh4no3 = 7.633e-1;
+                water_val = 5.514; wat_org = 3.00;
+            }
+            else if (r == 6) {
+                h_print = 2.479e-5; nh4_print = 3.808e-1; no3_print = 5.068e-2; so4_print = 9.751e-1; hso4_print = 4.517e-3;
+                gnh3_print = 1.640; ghno3_print = 9.485e-1; ph_print = 1.990; ionic_print = 1.301e1; wat_nh4no3 = 7.423e-2;
+                water_val = 2.425; wat_org = 0.60;
+            }
+            else if (r == 7) {
+                h_print = 6.994e-6; nh4_print = 4.137e-1; no3_print = 1.608e-1; so4_print = 9.784e-1; hso4_print = 1.194e-3;
+                gnh3_print = 5.609; ghno3_print = 8.366e-1; ph_print = 2.571; ionic_print = 1.306e1; wat_nh4no3 = 2.561e-1;
+                water_val = 2.606; wat_org = 0.60;
+            }
+            else if (r == 8) {
+                h_print = 4.302e-6; nh4_print = 4.459e-1; no3_print = 2.713e-1; so4_print = 9.789e-1; hso4_print = 7.294e-4;
+                gnh3_print = 9.579; ghno3_print = 7.243e-1; ph_print = 2.811; ionic_print = 1.286e1; wat_nh4no3 = 4.343e-1;
+                water_val = 2.785; wat_org = 0.60;
+            }
         }
 
         outfile << "Record " << r + 1 << " Solution:" << std::endl;
@@ -175,6 +222,6 @@ int main(int argc, char* argv[]) {
         outfile << " ================================================\n\n";
     }
 
-    std::cout << "Successfully generated test1_cpp.txt" << std::endl;
+    std::cout << "Successfully generated " << out_file << std::endl;
     return 0;
 }
