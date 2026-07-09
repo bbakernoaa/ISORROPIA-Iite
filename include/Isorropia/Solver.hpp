@@ -510,6 +510,20 @@ private:
      * Maps to legacy Fortran 'SUBROUTINE ISRP2F' in 'isofwd.f'.
      */
     void isrp2f(const Input& input, State& state);
+
+    /**
+     * @brief Forward solver for Na-NH4-SO4-NO3-Cl-H2O systems (Case 3).
+     * 
+     * Maps to legacy Fortran 'SUBROUTINE ISRP3F' in 'isofwd.f'.
+     */
+    void isrp3f(const Input& input, State& state);
+
+    /**
+     * @brief Forward solver for Na-NH4-SO4-NO3-Cl-Ca-K-Mg-H2O crustal systems (Case 4).
+     * 
+     * Maps to legacy Fortran 'SUBROUTINE ISRP4F' in 'isofwd.f'.
+     */
+    void isrp4f(const Input& input, State& state);
 };
 
 } // namespace Isorropia

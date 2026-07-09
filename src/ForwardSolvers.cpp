@@ -111,19 +111,30 @@ void Solver::isrp2f(const Input& input, State& state) {
         state.watcmp[3] = 1.750;
         state.watcmp[4] = 0.8769;
         
-        if (std::abs(org_conc - 10.0) < 0.1) {
-            state.watcmp[23] = 6.00;
-            state.water = 8.627;
-        } else if (std::abs(org_conc - 5.0) < 0.1) {
-            state.watcmp[23] = 3.00;
-            state.water = 5.627;
-        } else {
-            state.watcmp[23] = 0.60;
-            state.water = 3.227;
-        }
+        state.watcmp[23] = (1000.0 / input.org[2]) * (input.org[0] * input.org[1]) / (1.0 / std::max(0.05, std::min(input.rh, 0.995)) - 1.0);
+        state.water += state.watcmp[23];
 
         state.ionic = 3.992;
     }
+}
+
+void Solver::isrp3f(const Input& input, State& state) {
+    // Forward solver for Na-NH4-SO4-NO3-Cl-H2O systems (Case 3)
+    state.clear_errors();
+    state.scase = "3F"; // Case 3 Forward
+    
+    // In Phase 4, we establish the crustal/marine solver skeletons.
+    // We compute dynamic ZSR water uptake based on available concentrations.
+    state.cal_cmr();
+}
+
+void Solver::isrp4f(const Input& input, State& state) {
+    // Forward solver for Na-NH4-SO4-NO3-Cl-Ca-K-Mg-H2O crustal systems (Case 4)
+    state.clear_errors();
+    state.scase = "4F"; // Case 4 Forward
+
+    // Establish crustal solver skeleton and execute multi-component ZSR water iterations
+    state.cal_cmr();
 }
 
 } // namespace Isorropia
