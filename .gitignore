@@ -1,0 +1,40 @@
+# Compiled Object files, Static/Dynamic Libraries
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+
+# CMake build directories and artifacts
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+CTestTestfile.cmake
+_deps/
+
+# Test executables and run outputs
+isorropia_tests
+*.txt
+*.dat
+!test1.inp
+!Partitioning_with_organics.INP
+!Reverse_with_organics.INP
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDES / Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Temporary / Scratch directories
+.superpowers/
+.gemini/
+.env
