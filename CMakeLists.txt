@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Library target
-add_library(isorropia STATIC src/Solver.cpp src/Thermodynamics.cpp src/WaterActivities.cpp src/ForwardSolvers.cpp src/ActivityCoefficients_KM.cpp)
+add_library(isorropia STATIC src/Solver.cpp src/Thermodynamics.cpp src/WaterActivities.cpp src/ForwardSolvers.cpp src/ActivityCoefficients_KM.cpp src/ReverseSolvers.cpp)
 target_include_directories(isorropia PUBLIC include)
 
 # Executable target
