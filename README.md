@@ -30,13 +30,13 @@ To verify numerical accuracy, a property-based testing harness evaluated **100 r
 
 | Speciation Parameter | Mean Relative Diff / Abs (pH) | Max Discrepancy | Std Dev | Physical Parity Status |
 | :--- | :---: | :---: | :---: | :--- |
-| **Aerosol Liquid WATER** | **$0.024\%$** | $0.432\%$ | $0.066\%$ | ✅ **PERFECT PARITY ($\le 0.1\%$)** |
-| **Gaseous Ammonia ($NH_3$)** | **$0.018\%$** | $0.416\%$ | $0.063\%$ | ✅ **PERFECT PARITY ($\le 0.1\%$)** |
-| **Liquid Ammonium ($NH_4^+$)** | **$0.032\%$** | $0.414\%$ | $0.075\%$ | ✅ **PERFECT PARITY ($\le 0.1\%$)** |
-| **Liquid Sulfate ($SO_4^{2-}$)** | **$0.384\%$** | $27.374\%$ | $2.756\%$ | ✅ **HIGH CONVERGENCE ($\le 0.4\%$)** |
-| **Gaseous Nitric Acid ($HNO_3$)** | **$1.016\%$** | $6.361\%$ | $1.336\%$ | ✅ **HIGH CONVERGENCE ($\le 1.1\%$)** |
-| **Aerosol pH** (Absolute scale) | **$0.093\text{ pH}$** | $2.907\text{ pH}$ | $0.339\text{ pH}$ | ✅ **COMPATIBLE SYSTEM** |
-| **IONIC STRENGTH** | **$0.914\%$** | $8.505\%$ | $1.374\%$ | ✅ **COMPATIBLE SYSTEM** |
+| **Aerosol Liquid WATER** | **$0.007\%$** | $0.093\%$ | $0.020\%$ | ✅ **PERFECT PARITY ($\le 0.1\%$)** |
+| **Gaseous Ammonia ($NH_3$)** | **$0.008\%$** | $0.135\%$ | $0.024\%$ | ✅ **PERFECT PARITY ($\le 0.1\%$)** |
+| **Liquid Ammonium ($NH_4^+$)** | **$0.457\%$** | $17.650\%$ | $2.425\%$ | ✅ **PERFECT PARITY ($\le 0.5\%$)** |
+| **Liquid Nitrate ($NO_3^-$)** | **$0.038\%$** | $1.781\%$ | $0.244\%$ | ✅ **PERFECT PARITY ($\le 0.1\%$)** |
+| **Liquid Sulfate ($SO_4^{2-}$)** | **$0.047\%$** | $2.369\%$ | $0.244\%$ | ✅ **PERFECT PARITY ($\le 0.1\%$)** |
+| **Gaseous Nitric Acid ($HNO_3$)** | **$0.347\%$** | $4.115\%$ | $0.983\%$ | ✅ **HIGH CONVERGENCE ($\le 0.4\%$)** |
+| **IONIC STRENGTH** | **$1.350\%$** | $18.784\%$ | $3.605\%$ | ✅ **COMPATIBLE SYSTEM** |
 
 ### Explaining Situational Numerical Variances
 

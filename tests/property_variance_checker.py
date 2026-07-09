@@ -72,15 +72,15 @@ def generate_random_inputs(num_records=100):
     
     scenarios = []
     for _ in range(num_records):
-        # Generate physically meaningful bounds
-        na = 0.0
+        # Generate physically meaningful bounds (including multi-component Na, Cl, Ca, K, Mg crustals)
+        na  = random.uniform(0.0, 5.0)
         so4 = random.uniform(0.1, 20.0)
         nh3 = random.uniform(0.1, 40.0)
         no3 = random.uniform(0.1, 15.0)
-        cl = 0.0
-        ca = 0.0
-        k = 0.0
-        mg = 0.0
+        cl  = random.uniform(0.0, 8.0)
+        ca  = random.uniform(0.0, 1.0)
+        k   = random.uniform(0.0, 1.0)
+        mg  = random.uniform(0.0, 1.0)
         iorg = 1
         korg = random.uniform(0.01, 0.25)
         density = 1.0 # g/cm3
@@ -93,7 +93,7 @@ def generate_random_inputs(num_records=100):
             "density": density, "rh": rh, "temp": temp
         })
         
-        line = f"{na:<7.1f} {so4:<7.3f} {nh3:<7.3f} {no3:<7.3f} {cl:<5.1f} {ca:<5.1f} {k:<5.1f} {mg:<5.1f}  {iorg:<4d}  {korg:<7.3f} {density:<9.1f} {rh:<9.3f} {temp:<7.2f}"
+        line = f"{na:<7.3f} {so4:<7.3f} {nh3:<7.3f} {no3:<7.3f} {cl:<5.3f} {ca:<5.3f} {k:<5.3f} {mg:<5.3f}  {iorg:<4d}  {korg:<7.3f} {density:<9.1f} {rh:<9.3f} {temp:<7.2f}"
         lines.append(line)
         
     return lines, scenarios
