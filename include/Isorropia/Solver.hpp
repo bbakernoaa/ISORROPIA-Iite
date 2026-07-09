@@ -261,16 +261,59 @@ struct State {
     double cmgcl2 = 0.0;   ///< Solid Magnesium Chloride (MgCl2). Maps to Fortran 'CMGCL2'.
 
     //=======================================================================
-    // COMMON /SOLUT/ equivalents for Case D3 speciation
+    // COMMON /SOLUT/ equivalents for Case D3 and multi-component speciation
     //=======================================================================
     double chi1 = 0.0;
     double chi2 = 0.0;
     double chi3 = 0.0;
     double chi4 = 0.0;
+    double chi5 = 0.0;
+    double chi6 = 0.0;
+    double chi7 = 0.0;
+    double chi8 = 0.0;
+    double chi9 = 0.0;
+    double chi10 = 0.0;
+    double chi11 = 0.0;
+    double chi12 = 0.0;
+    double chi13 = 0.0;
+    double chi14 = 0.0;
+    double chi15 = 0.0;
+    double chi16 = 0.0;
+    double chi17 = 0.0;
     double psi1 = 0.0;
     double psi2 = 0.0;
     double psi3 = 0.0;
     double psi4 = 0.0;
+    double psi5 = 0.0;
+    double psi6 = 0.0;
+    double psi7 = 0.0;
+    double psi8 = 0.0;
+    double psi9 = 0.0;
+    double psi10 = 0.0;
+    double psi11 = 0.0;
+    double psi12 = 0.0;
+    double psi13 = 0.0;
+    double psi14 = 0.0;
+    double psi15 = 0.0;
+    double psi16 = 0.0;
+    double psi17 = 0.0;
+    double a1 = 0.0;
+    double a2 = 0.0;
+    double a3 = 0.0;
+    double a4 = 0.0;
+    double a5 = 0.0;
+    double a6 = 0.0;
+    double a7 = 0.0;
+    double a8 = 0.0;
+    double a9 = 0.0;
+    double a10 = 0.0;
+    double a11 = 0.0;
+    double a12 = 0.0;
+    double a13 = 0.0;
+    double a14 = 0.0;
+    double a15 = 0.0;
+    double a16 = 0.0;
+    double a17 = 0.0;
 
     //=======================================================================
     // COMMON /GAS/ equivalents (Gas phase species concentrations)
