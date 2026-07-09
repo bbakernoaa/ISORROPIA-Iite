@@ -51,3 +51,22 @@ TEST(StateTest, WaterActivityGrids) {
     EXPECT_NEAR(state.awac[99], 1.000000e-01, 1e-6);
     EXPECT_NEAR(state.awcs[0], 0.0, 1e-15); // should be filled with zero
 }
+
+TEST(StateTest, DeliquescenceRelativeHumidity) {
+    Isorropia::State state;
+    state.temp = 298.15; // standard K
+    state.initialize_drh();
+    
+    // Test base defaults
+    EXPECT_DOUBLE_EQ(state.drh2so4, 0.0);
+    EXPECT_DOUBLE_EQ(state.drnh42s4, 0.7997);
+    EXPECT_DOUBLE_EQ(state.drnh4hs4, 0.4000);
+    EXPECT_DOUBLE_EQ(state.drnh4cl, 0.7710);
+    EXPECT_DOUBLE_EQ(state.drnh4no3, 0.6183);
+    
+    // Test temperature correction (e.g. 280 K)
+    state.temp = 280.0;
+    state.initialize_drh();
+    EXPECT_GT(state.drnh42s4, 0.7997); // DRH should increase slightly as temperature drops for ammonium sulfate
+    EXPECT_GT(state.drnh4hs4, 0.4000);
+}

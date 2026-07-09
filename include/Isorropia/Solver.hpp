@@ -126,6 +126,12 @@ struct ErrorEntry {
  */
 struct State {
     //=======================================================================
+    // COMMON /INPT/ equivalents (Meteorological state)
+    //=======================================================================
+    double temp = 298.15;  ///< Ambient temperature (Kelvin). Maps to Fortran 'TEMP' in COMMON /INPT/.
+    double rh = 0.0;       ///< Ambient relative humidity (fraction [0.0 - 1.0]). Maps to Fortran 'RH' in COMMON /INPT/.
+
+    //=======================================================================
     // COMMON /IONS/ equivalents (Liquid aerosol phase properties)
     //=======================================================================
     
@@ -260,6 +266,44 @@ struct State {
     double ghcl = 0.0;     ///< Gaseous Hydrochloric Acid (HCl). Maps to Fortran 'GHCL'.
 
     //=======================================================================
+    // COMMON /DRH / equivalents (Unicomponent Deliquescence Relative Humidities)
+    //=======================================================================
+    double drh2so4 = 0.0;   ///< DRH of Sulfuric acid (H2SO4). Maps to Fortran 'DRH2SO4'.
+    double drnh42s4 = 0.0;  ///< DRH of Ammonium Sulfate ((NH4)2SO4). Maps to Fortran 'DRNH42S4'.
+    double drnahso4 = 0.0;  ///< DRH of Sodium Bisulfate (NaHSO4). Maps to Fortran 'DRNAHSO4'.
+    double drnacl = 0.0;    ///< DRH of Sodium Chloride (NaCl). Maps to Fortran 'DRNACL'.
+    double drnano3 = 0.0;   ///< DRH of Sodium Nitrate (NaNO3). Maps to Fortran 'DRNANO3'.
+    double drna2so4 = 0.0;  ///< DRH of Sodium Sulfate (Na2SO4). Maps to Fortran 'DRNA2SO4'.
+    double drnh4hs4 = 0.0;  ///< DRH of Ammonium Bisulfate (NH4HSO4). Maps to Fortran 'DRNH4HS4'.
+    double drlc = 0.0;      ///< DRH of Letovicite ((NH4)3H(SO4)2). Maps to Fortran 'DRLC'.
+    double drnh4no3 = 0.0;  ///< DRH of Ammonium Nitrate (NH4NO3). Maps to Fortran 'DRNH4NO3'.
+    double drnh4cl = 0.0;   ///< DRH of Ammonium Chloride (NH4Cl). Maps to Fortran 'DRNH4CL'.
+    double drcaso4 = 0.0;   ///< DRH of Calcium Sulfate (CaSO4). Maps to Fortran 'DRCASO4'.
+    double drcano32 = 0.0;  ///< DRH of Calcium Nitrate (Ca(NO3)2). Maps to Fortran 'DRCANO32'.
+    double drcacl2 = 0.0;   ///< DRH of Calcium Chloride (CaCl2). Maps to Fortran 'DRCACL2'.
+    double drk2so4 = 0.0;   ///< DRH of Potassium Sulfate (K2SO4). Maps to Fortran 'DRK2SO4'.
+    double drkhso4 = 0.0;   ///< DRH of Potassium Bisulfate (KHSO4). Maps to Fortran 'DRKHSO4'.
+    double drkno3 = 0.0;    ///< DRH of Potassium Nitrate (KNO3). Maps to Fortran 'DRKNO3'.
+    double drkcl = 0.0;     ///< DRH of Potassium Chloride (KCl). Maps to Fortran 'DRKCL'.
+    double drmgso4 = 0.0;   ///< DRH of Magnesium Sulfate (MgSO4). Maps to Fortran 'DRMGSO4'.
+    double drmgno32 = 0.0;  ///< DRH of Magnesium Nitrate (Mg(NO3)2). Maps to Fortran 'DRMGNO32'.
+    double drmgcl2 = 0.0;   ///< DRH of Magnesium Chloride (MgCl2). Maps to Fortran 'DRMGCL2'.
+
+    //=======================================================================
+    // COMMON /MDRH/ & /MDRH2/ equivalents (Mutual Deliquescence Relative Humidities)
+    //=======================================================================
+    double drmlcab = 0.0, drmlcas = 0.0, drmasan = 0.0, drmg1 = 0.0, drmg2 = 0.0;
+    double drmg3 = 0.0, drmh1 = 0.0, drmh2 = 0.0, drmi1 = 0.0, drmi2 = 0.0;
+    double drmi3 = 0.0, drmq1 = 0.0, drmr1 = 0.0, drmr2 = 0.0, drmr3 = 0.0;
+    double drmr4 = 0.0, drmr5 = 0.0, drmr6 = 0.0, drmr7 = 0.0, drmr8 = 0.0;
+    double drmr9 = 0.0, drmr10 = 0.0, drmr11 = 0.0, drmr12 = 0.0, drmr13 = 0.0;
+    int wftyp = 0;          ///< Water formulation type. Maps to Fortran 'WFTYP'.
+
+    double drmo1 = 0.0, drmo2 = 0.0, drmo3 = 0.0, drml1 = 0.0, drml2 = 0.0;
+    double drml3 = 0.0, drmmm1 = 0.0, drmmm2 = 0.0, drmp1 = 0.0, drmp2 = 0.0;
+    double drmp3 = 0.0, drmp4 = 0.0, drmp5 = 0.0, drmv1 = 0.0;
+
+    //=======================================================================
     // COMMON /ZSR/ equivalents (Water activities arrays)
     //=======================================================================
     std::array<double, 100> awas = {0.0};  ///< ZSR Water activity grid. Maps to Fortran 'AWAS(NZSR)'.
@@ -354,6 +398,13 @@ struct State {
      * Replicates pure salt data grids from Fortran 'BLOCK DATA BLKISO'.
      */
     void initialize_water_activities();
+
+    /**
+     * @brief Initializes unicomponent and mutual Deliquescence Relative Humidities.
+     * 
+     * Replicates DRH calculations and temperature dependency formulas from Fortran INIT subroutines.
+     */
+    void initialize_drh();
 };
 
 /**
