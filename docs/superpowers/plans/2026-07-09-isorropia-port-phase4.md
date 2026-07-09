@@ -1,12 +1,12 @@
-# ISORROPIA-Lite C++ Port (Phase 4: Crustal Forward and Reverse Solvers) Implementation Plan
+# ISORROPIA-Lite C++ Port (Phase 5: C-Compatible Public API and CATChem Integration Preparation) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Port the remaining crustal forward solvers (`ISRP3F`, `ISRP4F`) and the entire reverse solver pipeline (`isrp1r` through `isrp4r`) to enable 100% mathematical simulation coverage of all atmospheric aerosol regimes (including forward/reverse problems with Na, Ca, Cl, K, Mg, and organics).
+**Goal:** Provide a C-compatible, flat-linkable ABI interface (`Isorropia::km_tab`, `Isorropia::cal_cmr`, etc.) encapsulated in standard header files to allow atmospheric model interfaces like CATChem (C, C++, Fortran) to compile, link, and invoke our thread-safe solver cleanly.
 
-**Architecture:** Implement forward crustal and reverse solver subroutines inside `src/ForwardSolvers.cpp` and `src/ReverseSolvers.cpp`. Register them in the main entry point `Solver::solve()` to dispatch based on `input.iprob` (0 = Forward, 1 = Reverse) and component presence.
+**Architecture:** Implement standard C-compatible headers under `include/Isorropia/Isorropia.h` containing plain C structs and free functions. These map fields directly into C++ `Isorropia::Input` and `Isorropia::State` under the hood, ensuring complete thread-safety.
 
-**Tech Stack:** C++17, CMake, GoogleTest, Python 3
+**Tech Stack:** C++17, C, CMake, GoogleTest
 
 ## Global Constraints
 
@@ -19,203 +19,180 @@
 
 ---
 
-### Task 1: Crustal Forward Solvers (ISRP3F and ISRP4F)
+### Task 1: C-Compatible API Header
 
 **Files:**
-- Modify: `include/Isorropia/Solver.hpp` (declare isrp3f, isrp4f)
-- Modify: `src/ForwardSolvers.cpp` (implement isrp3f, isrp4f and associated speciation loops)
-- Modify: `src/Solver.cpp` (integrate isrp3f/isrp4f dispatch)
-- Create: `tests/test_crustal.cpp` (unit tests for crustal regimes)
-- Modify: `tests/CMakeLists.txt` (register tests)
+- Create: `include/Isorropia/Isorropia.h`
 
 **Interfaces:**
-- Consumes: `Isorropia::Input` with crustal components (Ca, K, Mg, Na, Cl > 0).
-- Produces: `void Solver::isrp3f(const Input&, State&)` and `void Solver::isrp4f(const Input&, State&)` setting correctSpeciation and liquid water contents.
+- Produces: Standard C-linkable header containing `IsorropiaInput`, `IsorropiaState`, and solver handles compatible with `extern "C"`.
 
-- [ ] **Step 1: Declare crustal solvers in Solver.hpp**
-
-```cpp
-    /**
-     * @brief Forward solver for Na-NH4-SO4-NO3-Cl-H2O systems (Case 3).
-     * 
-     * Maps to legacy Fortran 'SUBROUTINE ISRP3F'.
-     */
-    void isrp3f(const Input& input, State& state);
-
-    /**
-     * @brief Forward solver for Na-NH4-SO4-NO3-Cl-Ca-K-Mg-H2O crustal systems (Case 4).
-     * 
-     * Maps to legacy Fortran 'SUBROUTINE ISRP4F'.
-     */
-    void isrp4f(const Input& input, State& state);
-```
-
-- [ ] **Step 2: Implement isrp3f and isrp4f in src/ForwardSolvers.cpp**
-
-Port speciation systems for crustals from `isofwd.f` line 800-2719.
-Maintain standard Newton-Raphson/bisection loops, ensuring error stacks capture non-convergence gracefully.
-
-- [ ] **Step 3: Update Solver.cpp dispatch**
+- [ ] **Step 1: Write Isorropia.h**
 
 ```cpp
-    // Inside Solver::solve:
-    // If Ca, K, or Mg are present -> call isrp4f
-    // Else if Na or Cl are present -> call isrp3f
-    // Else if Nitrate is present -> call isrp2f
-    // Else -> call isrp1f
+#ifndef ISORROPIA_C_API_H
+#define ISORROPIA_SOLVER_H // guards matching Solver.hpp if needed, but let's use ISORROPIA_C_API_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+    double w[8];
+    double org[3];
+    double waer[8];
+    double temp;
+    double rh;
+    int iprob;
+    int nadj;
+} IsorropiaInput;
+
+typedef struct {
+    double temp;
+    double rh;
+    double w[8];
+    double waer[8];
+    double org[3];
+
+    double molal[10];
+    double molalr[23];
+    double gama[23];
+    double zz[23];
+    double z[10];
+    double gamou[23];
+    double gamin[23];
+    double m0[23];
+    double gasaq[3];
+    int actmod;
+    double epsact;
+    double coh;
+    double chno3;
+    double chcl;
+    double water;
+    double ionic;
+    double watcmp[24];
+    int frst;
+    int calain;
+    int calaou;
+    int dryf;
+
+    double ch2so4, cnh42s4, cnh4hs4, cnacl, cna2so4, cnano3, cnh4no3, cnh4cl, cnahso4, clc;
+    double ccaso4, ccano32, ccacl2, ck2so4, ckhso4, ckno3, ckcl, cmgso4, cmgno32, cmgcl2;
+    double gnh3, ghno3, ghcl;
+
+    int num_errors;
+    // We encapsulate the remaining error-stack elements internally
+} IsorropiaState;
+
+/**
+ * @brief Top-level execution entry point for C and Fortran binders.
+ */
+void isorropia_solve_c(const IsorropiaInput* input, IsorropiaState* state);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 ```
 
-- [ ] **Step 4: Write unit tests in tests/test_crustal.cpp**
+- [ ] **Step 2: Commit**
+
+```bash
+git add include/Isorropia/Solver.hpp # Verify references
+git add include/Isorropia/Isorropia.h
+git commit -m "feat: declare C-compatible public API headers"
+```
+
+---
+
+### Task 2: C-API Implementation (src/ReverseSolvers.cpp or src/Solver.cpp)
+
+**Files:**
+- Modify: `src/Solver.cpp` (implement isorropia_solve C bindings)
+- Modify: `CMakeLists.txt` (compile updates)
+
+**Interfaces:**
+- Consumes: `Isorropia::Input` and `Isorropia::State` C++ structures.
+- Produces: Compiled `isorropia_cli` and `isorropia` static libraries containing the `isorropia_solve` symbol.
+
+- [ ] **Step 1: Implement km_tab and solvers conversions in Solver.cpp**
+
+```cpp
+extern "C" {
+
+void isorropia_solve(const Isorropia::Input* input, Isorropia::State* state) {
+    if (!input || !state) return;
+    
+    // Create C++ structures, call Solver::solve, and copy output metrics back to C-compatible pointers
+    Isorropia::Solver solver;
+    solver.solve(*input, *state);
+}
+
+}
+```
+
+- [ ] **Step 2: Verify build**
+
+Run: `cd build && make`
+Expected: Static library builds successfully without errors.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/Solver.cpp CMakeLists.txt
+git commit -m "feat: implement C-compatible wrapper functions"
+```
+
+---
+
+### Task 3: Unit Tests for C-Compatible Interface
+
+**Files:**
+- Create: `tests/test_c_api.cpp`
+- Modify: `tests/CMakeLists.txt`
+
+**Interfaces:**
+- Consumes: `isorropia` library.
+
+- [ ] **Step 1: Write test_reverse_c.cpp**
 
 ```cpp
 #include <gtest/gtest.h>
 #include "Isorropia/Solver.hpp"
 
-TEST(CrustalTest, ForwardCrustalSolve) {
-    Isorropia::Solver solver;
+TEST(CAPITest, SolveCCompatible) {
     Isorropia::Input input;
     Isorropia::State state;
     
-    // Set up a standard crustal case
-    input.w[0] = 1.0; // Na
-    input.w[1] = 1.0; // SO4
-    input.w[5] = 0.5; // Ca
+    input.w[1] = 1.0; // H2SO4
+    input.w[2] = 2.0; // NH3
+    input.w[3] = 1.0; // HNO3
     input.rh = 0.80;
+    input.temp = 298.15;
     
+    // Call the solver
+    Isorropia::Solver solver;
     solver.solve(input, state);
+    
     EXPECT_GT(state.water, 0.0);
 }
 ```
 
-- [ ] **Step 5: Verify compilation and build**
+- [ ] **Step 2: Update tests/CMakeLists.txt**
 
-Run: `cd build && cmake .. && make && ctest -V`
-Expected: Crustal assertions PASS.
+```cmake
+add_executable(isorropia_tests test_main.cpp test_state.cpp test_thermo.cpp test_solver.cpp test_activities.cpp test_crustal.cpp test_reverse.cpp test_activities.cpp tests/test_activities.cpp tests/test_reverse.cpp tests/test_crustal.cpp tests/test_state.cpp)
+```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 3: Verify all unit tests and regression harness**
+
+Run: `cd build && cmake .. && make && ctest -V && python3 ../tests/regression_runner.py`
+Expected: 100% PASS!
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git add include/Isorropia/Solver.hpp src/ForwardSolvers.cpp src/Solver.cpp tests/test_crustal.cpp tests/CMakeLists.txt
-git commit -m "feat: implement forward crustal solvers ISRP3F and ISRP4F"
-```
-
----
-
-### Task 2: Reverse Solvers Pipeline & Case 1-2 Reverse Solvers (isrp1r, isrp2r)
-
-**Files:**
-- Modify: `include/Isorropia/Solver.hpp` (declare reverse solver methods)
-- Create: `src/ReverseSolvers.cpp` (implement isrp1r and isrp2r)
-- Modify: `src/Solver.cpp` (integrate reverse problem routing)
-- Modify: `CMakeLists.txt` (compile ReverseSolvers.cpp)
-- Create: `tests/test_reverse.cpp` (unit tests for reverse solvers)
-- Modify: `tests/CMakeLists.txt` (register tests)
-
-**Interfaces:**
-- Consumes: `Isorropia::Input` (with iprob = 1)
-- Produces: `void Solver::isrp1r(const Input&, State&)` and `void Solver::isrp2r(const Input&, State&)` returning aerosol thermodynamic properties.
-
-- [ ] **Step 1: Declare reverse solvers in Solver.hpp**
-
-```cpp
-private:
-    void isrp1r(const Input& input, State& state);
-    void isrp2r(const Input& input, State& state);
-```
-
-- [ ] **Step 2: Implement isrp1r and isrp2r inside src/ReverseSolvers.cpp**
-
-Port reverse calculations from `isorev.f` lines 1-1000. Re-map 1-based arrays to 0-based arrays safely.
-
-- [ ] **Step 3: Update Solver.cpp to dispatch reverse problems**
-
-```cpp
-    // Inside Solver::solve:
-    if (input.iprob == 1) {
-        // Dispatch to reverse solvers: isrp1r, isrp2r, isrp3r, isrp4r
-    } else {
-        // Dispatch to forward solvers
-    }
-```
-
-- [ ] **Step 4: Write reverse unit tests in tests/test_reverse.cpp**
-
-Verify that inputs with `iprob = 1` are successfully solved by reverse routines.
-
-- [ ] **Step 5: Verify build**
-
-Run: `cd build && make && ctest -V`
-Expected: Reverse unit tests PASS.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add include/Isorropia/Solver.hpp src/ReverseSolvers.cpp src/Solver.cpp CMakeLists.txt tests/test_reverse.cpp tests/CMakeLists.txt
-git commit -m "feat: implement reverse solver pipeline and solvers isrp1r/isrp2r"
-```
-
----
-
-### Task 3: Case 3 and 4 Reverse Solvers (isrp3r, isrp4r)
-
-**Files:**
-- Modify: `include/Isorropia/Solver.hpp` (declare isrp3r, isrp4r)
-- Modify: `src/ReverseSolvers.cpp` (implement isrp3r, isrp4r)
-- Modify: `tests/test_reverse.cpp` (add crustal reverse tests)
-
-**Interfaces:**
-- Consumes: Crustal aerosol concentrations in input (iprob = 1)
-- Produces: `void Solver::isrp3r(const Input&, State&)` and `void Solver::isrp4r(const Input&, State&)`
-
-- [ ] **Step 1: Declare solvers inside Solver.hpp**
-
-```cpp
-    void isrp3r(const Input& input, State& state);
-    void isrp4r(const Input& input, State& state);
-```
-
-- [ ] **Step 2: Implement isrp3r and isrp4r inside src/ReverseSolvers.cpp**
-
-Port crustal reverse speciation math from `isorev.f` lines 1000-1761.
-
-- [ ] **Step 3: Add crustal reverse test assertions in tests/test_reverse.cpp**
-
-Validate correct reverse speciation outputs.
-
-- [ ] **Step 4: Run test suite**
-
-Run: `cd build && make && ctest -V`
-Expected: All tests pass.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add include/Isorropia/Solver.hpp src/ReverseSolvers.cpp tests/test_reverse.cpp
-git commit -m "feat: implement reverse crustal solvers isrp3r and isrp4r"
-```
-
----
-
-### Task 4: Complete E2E Integration and Multi-file Regression Tests
-
-**Files:**
-- Modify: `tests/regression_runner.py` (add support for multiple INP files)
-
-**Interfaces:**
-- Consumes: `Partitioning_with_organics.INP`, `Reverse_with_organics.INP`, and corresponding reference outputs.
-
-- [ ] **Step 1: Update Python regression script**
-
-Modify `tests/regression_runner.py` to recursively iterate over all `.inp`/`.INP` files in `ISORROPIALite_Executable_Manual_Papers`, run both `isorropia_cli` and Fortran `isolite`, and assert relative accuracy.
-
-- [ ] **Step 2: Verify entire integrated pipeline**
-
-Run: `python3 tests/regression_runner.py`
-Expected: 100% E2E validation PASS across all test configurations!
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add tests/regression_runner.py
-git commit -m "test: scale E2E regression harness to check all forward and reverse input configurations"
+git add tests/test_reverse.cpp tests/CMakeLists.txt
+git commit -m "test: add integration checks for the C-compatible link-state"
 ```
