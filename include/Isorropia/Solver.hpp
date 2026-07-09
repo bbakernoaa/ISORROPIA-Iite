@@ -567,6 +567,11 @@ private:
     void cal_chs4(double hi, double so4i, double hso4i, double& delta, State& state);
     void cal_cna(const Input& input, State& state);
 
+    // Minor species and dynamic dissolution calculators
+    void cal_cha(const Input& input, State& state);
+    void cal_cnha(const Input& input, State& state);
+    void poly3(double a1, double a2, double a3, double& root, int& islv, State& state);
+
     /**
      * @brief Reverse solver for NH4-SO4-H2O systems (Case 1).
      * 

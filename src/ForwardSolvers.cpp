@@ -523,6 +523,148 @@ void Solver::cal_cna(const Input& input, State& state) {
     state.molal[1] = state.molal[1] + delt; // H+
 }
 
+void Solver::cal_cha(const Input& input, State& state) {
+    double x = state.w[4]; // Total HCl -> Component Cl index 4
+    double delt = 0.0;
+    if (state.water > state.tiny) {
+        double kapa = state.molal[1]; // H+
+        double alfa = state.xk3 * state.r * state.temp * std::pow(state.water / state.gama[10], 2.0); // GAMA(11) -> index 10
+        double diak = std::sqrt((kapa + alfa) * (kapa + alfa) + 4.0 * alfa * x);
+        delt = 0.5 * (-(kapa + alfa) + diak);
+    }
+
+    state.ghcl = std::max(x - delt, 0.0);
+    state.molal[4] = delt; // Cl- -> index 4
+    state.molal[1] = state.molal[1] + delt; // H+
+}
+
+void Solver::cal_cnha(const Input& input, State& state) {
+    if (state.water <= state.tiny) {
+        state.ghcl  = std::max(state.w[4] - state.molal[4], state.tiny);
+        state.ghno3 = std::max(state.w[3] - state.molal[3], state.tiny);
+        return;
+    }
+
+    if (state.w[4] <= state.tiny && state.w[3] <= state.tiny) {
+        return;
+    }
+    else if (state.w[4] <= state.tiny) {
+        cal_cna(input, state);
+        return;
+    }
+    else if (state.w[3] <= state.tiny) {
+        cal_cha(input, state);
+        return;
+    }
+
+    double a3 = state.xk4 * state.r * state.temp * std::pow(state.water / state.gama[9], 2.0); // GAMA(10)
+    double a4 = state.xk3 * state.r * state.temp * std::pow(state.water / state.gama[10], 2.0); // GAMA(11)
+
+    double delcl = 0.0;
+    double delno = 0.0;
+
+    double omega = state.molal[1]; // H+
+    double chi3  = state.w[3];     // HNO3
+    double chi4  = state.w[4];     // HCl
+
+    double c1 = a3 * chi3;
+    double c2 = a4 * chi4;
+    double c3 = a3 - a4;
+
+    double m1 = (c1 + c2 + (omega + a4) * c3) / c3;
+    double m2 = ((omega + a4) * c2 - a4 * c3 * chi4) / c3;
+    double m3 = -a4 * c2 * chi4 / c3;
+
+    int islv = 1;
+    poly3(m1, m2, m3, delcl, islv, state);
+    if (islv != 0) {
+        delcl = state.tiny;
+        state.push_error(22, "CALCNHA: NO SOLUTION FOR HCL DISS");
+    }
+    delcl = std::min(delcl, chi4);
+
+    delno = c1 * delcl / (c2 + c3 * delcl);
+    delno = std::min(delno, chi3);
+
+    if (delcl < 0.0 || delno < 0.0 || delcl > chi4 || delno > chi3) {
+        delcl = state.tiny;
+        delno = state.tiny;
+        state.push_error(22, "CALCNHA: SOLUTION BOUNDS WARN");
+    }
+
+    state.molal[1] += (delno + delcl); // H+
+    state.molal[4] += delcl;           // Cl-
+    state.molal[3] += delno;           // NO3-
+
+    state.ghcl  = std::max(state.w[4] - state.molal[4], state.tiny);
+    state.ghno3 = std::max(state.w[3] - state.molal[3], state.tiny);
+}
+
+void Solver::poly3(double a1, double a2, double a3, double& root, int& islv, State& state) {
+    double eps = 1e-50;
+    double expon = 1.0 / 3.0;
+    double pi = 3.14159265358979323846;
+    double thet1 = 120.0 / 180.0;
+    double thet2 = 240.0 / 180.0;
+
+    std::array<double, 3> x = {0.0};
+    int ix = 1;
+
+    if (std::abs(a3) <= eps) {
+        islv = 1;
+        ix = 1;
+        x[0] = 0.0;
+        double d = a1 * a1 - 4.0 * a2;
+        if (d >= 0.0) {
+            ix = 3;
+            double sqd = std::sqrt(d);
+            x[1] = 0.5 * (-a1 + sqd);
+            x[2] = 0.5 * (-a1 - sqd);
+        }
+    }
+    else {
+        islv = 1;
+        double Q = (3.0 * a2 - a1 * a1) / 9.0;
+        double R = (9.0 * a1 * a2 - 27.0 * a3 - 2.0 * a1 * a1 * a1) / 54.0;
+        double D = Q * Q * Q + R * R;
+
+        if (D < -eps) {
+            ix = 3;
+            double arg = R / std::sqrt(-Q * Q * Q);
+            arg = std::max(-1.0, std::min(arg, 1.0));
+            double thet = expon * std::acos(arg);
+            double coef = 2.0 * std::sqrt(-Q);
+            x[0] = coef * std::cos(thet) - expon * a1;
+            x[1] = coef * std::cos(thet + thet1 * pi) - expon * a1;
+            x[2] = coef * std::cos(thet + thet2 * pi) - expon * a1;
+        }
+        else if (D <= eps) {
+            ix = 2;
+            double ssig = (R >= 0.0) ? 1.0 : -1.0;
+            double s = ssig * std::pow(std::abs(R), expon);
+            x[0] = 2.0 * s - expon * a1;
+            x[1] = -s - expon * a1;
+        }
+        else {
+            ix = 1;
+            double sqd = std::sqrt(D);
+            double ssig = (R + sqd >= 0.0) ? 1.0 : -1.0;
+            double tsig = (R - sqd >= 0.0) ? 1.0 : -1.0;
+            double s = ssig * std::pow(std::abs(R + sqd), expon);
+            double t = tsig * std::pow(std::abs(R - sqd), expon);
+            x[0] = s + t - expon * a1;
+        }
+    }
+
+    root = 1.0e30;
+    for (int i = 0; i < ix; ++i) {
+        if (x[i] > 0.0) {
+            root = std::min(root, x[i]);
+            islv = 0;
+        }
+    }
+}
+
 void Solver::isrp3f(const Input& input, State& state) {
     // Forward solver for Na-NH4-SO4-NO3-Cl-H2O systems (Case 3)
     state.clear_errors();
