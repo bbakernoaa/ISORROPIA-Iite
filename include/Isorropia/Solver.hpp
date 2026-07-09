@@ -261,6 +261,18 @@ struct State {
     double cmgcl2 = 0.0;   ///< Solid Magnesium Chloride (MgCl2). Maps to Fortran 'CMGCL2'.
 
     //=======================================================================
+    // COMMON /SOLUT/ equivalents for Case D3 speciation
+    //=======================================================================
+    double chi1 = 0.0;
+    double chi2 = 0.0;
+    double chi3 = 0.0;
+    double chi4 = 0.0;
+    double psi1 = 0.0;
+    double psi2 = 0.0;
+    double psi3 = 0.0;
+    double psi4 = 0.0;
+
+    //=======================================================================
     // COMMON /GAS/ equivalents (Gas phase species concentrations)
     // Unit: mol/m3 of air.
     //=======================================================================
@@ -473,6 +485,13 @@ struct State {
     void cal_act1();
 
     /**
+     * @brief Computes multicomponent activity coefficients for Case 2 systems.
+     * 
+     * Replaces Fortran 'SUBROUTINE CALCACT2'.
+     */
+    void cal_act2();
+
+    /**
      * @brief Computes dynamic multi-species liquid water content of the aerosol using the ZSR relation.
      * 
      * Replaces Fortran 'SUBROUTINE CALCMR'.
@@ -540,6 +559,13 @@ private:
     void cal_cb1a(const Input& input, State& state);
     void cal_cc2(const Input& input, State& state);
     void cal_cnh3(const Input& input, State& state);
+
+    // Case 2 Forward Speciation Solvers
+    void cal_cd3(const Input& input, State& state);
+    double funcd3(double p4, const Input& input, State& state);
+    void cal_cd1a(const Input& input, State& state);
+    void cal_chs4(double hi, double so4i, double hso4i, double& delta, State& state);
+    void cal_cna(const Input& input, State& state);
 
     /**
      * @brief Reverse solver for NH4-SO4-H2O systems (Case 1).

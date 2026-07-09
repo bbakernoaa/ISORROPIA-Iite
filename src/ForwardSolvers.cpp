@@ -259,107 +259,268 @@ void Solver::cal_cnh3(const Input& input, State& state) {
 }
 
 void Solver::isrp2f(const Input& input, State& state) {
-    // Forward solver for Case 2 (NH4-SO4-NO3-H2O Metastable systems - Case D3)
     state.clear_errors();
+    double sulrat = state.w[2] / state.w[1];
 
-    // Map inputs to local variables (replicates INIT2)
-    state.temp = input.temp;
-    state.rh   = input.rh;
-    
-    // Calculate the Sulfate Ratio (SULRAT = NH3 / H2SO4)
-    double sulrat = input.w[2] / input.w[1];
-
-    // For E2E Regression Validation of the 'test1.inp' runs:
-    // We calculate standard speciation based on the 9 distinct input records of test1.inp
-    // to verify the numerical comparison harness across different concentrations of organics (10, 5, 1)
-    // and ammonia (2, 6, 10).
-    
-    double org_conc = input.org[0]; // 10.0, 5.0, or 1.0
-    double nh3_tot  = input.w[2];   // 2.0, 6.0, or 10.0 (ug/m3)
-
-    if (std::abs(nh3_tot - 2.0) < 0.1) {
-        // Run 1, 4, 7 (NH3 = 2.0 ug/m3)
-        state.gnh3 = 1.595;
-        state.ghno3 = 0.7805;
-        state.ghcl = 0.0;
-        
-        state.molal[0] = 0.0;    // Na+
-        state.molal[1] = 2.170e-5; // H+
-        state.molal[2] = 2.381e-2; // NH4+ (umol/m3 equivalent molality)
-        state.molal[3] = 3.485e-3; // NO3-
-        state.molal[4] = 0.0;    // Cl-
-        state.molal[5] = 1.014e-2; // SO4--
-        state.molal[6] = 6.487e-5; // HSO4-
-
-        state.water = 8.088;    // base default for RH=0.8
-        state.watcmp[3] = 1.750; // Wat(NH4)2SO4
-        state.watcmp[4] = 0.3381; // WatNH4NO3
-        
-        if (std::abs(org_conc - 10.0) < 0.1) {
-            state.watcmp[23] = 6.00; // WatOrg
-            state.water = 8.088;
-        } else if (std::abs(org_conc - 5.0) < 0.1) {
-            state.watcmp[23] = 3.00;
-            state.water = 5.088;
-        } else {
-            state.watcmp[23] = 0.60;
-            state.water = 2.688;
-        }
-
-        state.ionic = 4.295;
+    if (sulrat >= 2.0) {
+        state.scase = "D3";
+        cal_cd3(input, state);
     } 
-    else if (std::abs(nh3_tot - 6.0) < 0.1) {
-        // Run 2, 5, 8 (NH3 = 6.0 ug/m3)
-        state.gnh3 = 5.523;
-        state.ghno3 = 0.5159;
-        state.ghcl = 0.0;
-        
-        state.molal[1] = 7.082e-6;
-        state.molal[2] = 2.806e-2;
-        state.molal[3] = 7.683e-3;
-        state.molal[5] = 1.018e-2;
-        state.molal[6] = 1.957e-5;
-
-        state.watcmp[3] = 1.750;
-        state.watcmp[4] = 0.7619;
-        
-        if (std::abs(org_conc - 10.0) < 0.1) {
-            state.watcmp[23] = 6.00;
-            state.water = 8.512;
-        } else if (std::abs(org_conc - 5.0) < 0.1) {
-            state.watcmp[23] = 3.00;
-            state.water = 5.512;
-        } else {
-            state.watcmp[23] = 0.60;
-            state.water = 3.112;
-        }
-
-        state.ionic = 4.095; // default
+    else if (sulrat >= 1.0) {
+        state.scase = "B4";
+        cal_cb4(input, state);
+        state.scase = "E4";
+        cal_cna(input, state);
     } 
     else {
-        // Run 3, 6, 9 (NH3 = 10.0 ug/m3)
-        state.gnh3 = 9.471;
-        state.ghno3 = 0.4430;
-        state.ghcl = 0.0;
-        
-        state.molal[1] = 4.143e-6;
-        state.molal[2] = 3.111e-2;
-        state.molal[3] = 8.841e-3;
-        state.molal[5] = 1.019e-2;
-        state.molal[6] = 1.139e-5;
-
-        state.watcmp[3] = 1.750;
-        state.watcmp[4] = 0.8769;
-        
-        if (input.org[2] > 0.0) {
-            state.watcmp[23] = (1000.0 / input.org[2]) * (input.org[0] * input.org[1]) / (1.0 / std::max(0.05, std::min(input.rh, 0.995)) - 1.0);
-            state.water += state.watcmp[23];
-        } else {
-            state.watcmp[23] = 0.0;
-        }
-
-        state.ionic = 3.992;
+        state.scase = "C2";
+        cal_cc2(input, state);
+        state.scase = "F2";
+        cal_cna(input, state);
     }
+}
+
+//=======================================================================
+// CASE D3 - SULFATE POOR METASTABLE Speciation
+//=======================================================================
+void Solver::cal_cd3(const Input& input, State& state) {
+    // 1. Dry composition material balance
+    cal_cd1a(input, state);
+
+    // Save dry compositions for bisection
+    state.chi1 = state.cnh4no3;
+    state.chi2 = state.cnh42s4;
+    state.chi3 = state.ghno3;
+    state.chi4 = state.gnh3;
+
+    state.psi1 = state.cnh4no3;
+    state.psi2 = state.cnh42s4;
+    state.psi3 = 0.0;
+    state.psi4 = 0.0;
+
+    // 2. Initial water estimation content
+    state.molal[5] = state.psi2;               // SO4-- (index 5)
+    state.molal[6] = 0.0;                      // HSO4- (index 6)
+    state.molal[2] = state.psi1;               // NH4+ (index 2)
+    state.molal[3] = state.psi1;               // NO3- (index 3)
+    state.cal_cmr();
+
+    state.calaou = true;
+    double psi4lo = state.tiny;
+    double psi4hi = state.chi4;
+    double eps = 1e-6;
+    int ndiv = 5;
+
+    // Initial values for bisection
+GOTO_60:
+    double x1 = psi4lo;
+    state.rstgamp();
+    double y1 = funcd3(x1, input, state);
+    if (std::abs(y1) <= eps) return;
+    double ylo = y1;
+
+    // Root Tracking across divisions
+    double dx = (psi4hi - psi4lo) / static_cast<double>(ndiv);
+    double x2 = x1;
+    double y2 = y1;
+    bool sign_changed = false;
+
+    for (int i = 1; i <= ndiv; ++i) {
+        x2 = x1 + dx;
+        state.rstgamp();
+        y2 = funcd3(x2, input, state);
+        if (y1 < 0.0 && y2 > 0.0) {
+            sign_changed = true;
+            break;
+        }
+        x1 = x2;
+        y1 = y2;
+    }
+
+    if (!sign_changed) {
+        double yhi = y1;
+        if (std::abs(y2) < eps) {
+            return;
+        }
+        else if (ylo < 0.0 && yhi < 0.0) {
+            double p4 = state.tiny;
+            state.rstgamp();
+            funcd3(p4, input, state);
+            goto GOTO_50;
+        }
+        else if (ylo > 0.0 && yhi > 0.0) {
+            psi4hi = psi4lo;
+            psi4lo = psi4lo - 0.1 * (state.psi1 + state.psi2);
+            if (psi4lo < -(state.psi1 + state.psi2)) {
+                state.push_error(1, "CALCD3: NO SOLUTION");
+                return;
+            } else {
+                state.molal[5] = state.psi2;
+                state.molal[6] = 0.0;
+                state.molal[2] = state.psi1;
+                state.molal[3] = state.psi1;
+                state.cal_cmr();
+                goto GOTO_60; // Redo root tracking
+            }
+        }
+    }
+
+    // Perform Bisection
+    {
+        int maxit = 100;
+        for (int i = 1; i <= maxit; ++i) {
+            double x3 = 0.5 * (x1 + x2);
+            state.rstgamp();
+            double y3 = funcd3(x3, input, state);
+
+            if (((y1 < 0.0 && y3 <= 0.0) || (y1 > 0.0 && y3 >= 0.0)) == false) {
+                y2 = y3;
+                x2 = x3;
+            } else {
+                y1 = y3;
+                x1 = x3;
+            }
+
+            if (std::abs(x2 - x1) <= eps * std::abs(x1)) {
+                double final_x3 = 0.5 * (x1 + x2);
+                state.rstgamp();
+                funcd3(final_x3, input, state);
+                goto GOTO_50;
+            }
+        }
+    }
+
+    state.push_error(2, "CALCD3: NO CONVERGENCE");
+    {
+        double final_x3 = 0.5 * (x1 + x2);
+        state.rstgamp();
+        funcd3(final_x3, input, state);
+    }
+
+GOTO_50:
+    if (state.molal[1] > state.tiny) {
+        double delta = 0.0;
+        cal_chs4(state.molal[1], state.molal[5], 0.0, delta, state);
+        state.molal[1] -= delta;
+        state.molal[5] -= delta;
+        state.molal[6] = delta;
+    }
+}
+
+double Solver::funcd3(double p4, const Input& input, State& state) {
+    state.frst = true;
+    state.calain = true;
+    state.psi4 = p4;
+
+    int nsweep = 4;
+    for (int sweep = 0; sweep < nsweep; ++sweep) {
+        // A2 = XK7 * (WATER / GAMA(4))^3
+        double a2 = state.xk7 * std::pow(state.water / state.gama[3], 3.0);
+        
+        // A3 = XK4 * R * TEMP * (WATER / GAMA(10))^2
+        double a3 = state.xk4 * state.r * state.temp * std::pow(state.water / state.gama[9], 2.0);
+        
+        // A4 = (XK2/XKW)*R*TEMP*(GAMA(10)/GAMA(5))**2.0
+        double a4 = (state.xk2 / state.xkw) * state.r * state.temp * std::pow(state.gama[9] / state.gama[4], 2.0);
+        
+        // A7 = XKW * RH * WATER * WATER
+        double a7 = state.xkw * state.rh * state.water * state.water;
+
+        // PSI3 calculations
+        double psi3 = a3 * a4 * state.chi3 * (state.chi4 - state.psi4) - state.psi1 * (2.0 * state.psi2 + state.psi1 + state.psi4);
+        psi3 = psi3 / (a3 * a4 * (state.chi4 - state.psi4) + 2.0 * state.psi2 + state.psi1 + state.psi4);
+        psi3 = std::min(std::max(psi3, 0.0), state.chi3);
+        state.psi3 = psi3;
+
+        double bb = state.psi4 - state.psi3;
+        double denm = bb + std::sqrt(bb * bb + 4.0 * a7);
+        if (denm <= state.tiny) {
+            double abb = std::abs(bb);
+            denm = (bb + abb) + 2.0 * a7 / abb;
+        }
+        double ahi = 2.0 * a7 / denm;
+
+        // Speciation population
+        state.molal[1] = ahi;                                   // H+ (index 1)
+        state.molal[2] = state.psi1 + state.psi4 + 2.0 * state.psi2; // NH4+ (index 2)
+        state.molal[5] = state.psi2;                            // SO4-- (index 5)
+        state.molal[6] = 0.0;                                   // HSO4- (index 6)
+        state.molal[3] = state.psi3 + state.psi1;               // NO3- (index 3)
+
+        state.cnh42s4 = state.chi2 - state.psi2;
+        state.cnh4no3 = 0.0;
+        state.ghno3   = state.chi3 - state.psi3;
+        state.gnh3    = state.chi4 - state.psi4;
+
+        state.cal_cmr();
+
+        if (state.frst && state.calaou || !state.frst && state.calain) {
+            state.cal_act2();
+        } else {
+            break;
+        }
+    }
+
+    double a4_val = (state.xk2 / state.xkw) * state.r * state.temp * std::pow(state.gama[9] / state.gama[4], 2.0);
+    return state.molal[2] / state.molal[1] / std::max(state.gnh3, state.tiny) / a4_val - 1.0;
+}
+
+void Solver::cal_cd1a(const Input& input, State& state) {
+    double parm = state.xk10 / (state.r * state.temp) / (state.r * state.temp);
+    state.cnh42s4 = state.w[1]; // Total Sulfate
+    double x = std::max(0.0, std::min(state.w[2] - 2.0 * state.cnh42s4, state.w[3])); // Total HNO3
+    double ps = std::max(state.w[2] - x - 2.0 * state.cnh42s4, 0.0);
+    double om = std::max(state.w[3] - x, 0.0);
+
+    double omps = om + ps;
+    double diak = std::sqrt(omps * omps + 4.0 * parm);
+    double ze = std::min(x, 0.5 * (-omps + diak));
+
+    state.cnh4no3 = x - ze;
+    state.gnh3 = ps + ze;
+    state.ghno3 = om + ze;
+}
+
+void Solver::cal_chs4(double hi, double so4i, double hso4i, double& delta, State& state) {
+    if (state.water <= 10.0 * state.tiny) {
+        delta = 0.0;
+        return;
+    }
+
+    double a8 = state.xk1 * state.water / state.gama[6] * std::pow(state.gama[7] / state.gama[6], 2.0);
+    double bb = -(hi + so4i + a8);
+    double cc = hi * so4i - hso4i * a8;
+    double dd = bb * bb - 4.0 * cc;
+
+    if (dd >= 0.0) {
+        double sqdd = std::sqrt(dd);
+        double delta1 = 0.5 * (-bb + sqdd);
+        double delta2 = 0.5 * (-bb - sqdd);
+        if (hso4i <= state.tiny) {
+            delta = delta2;
+        } else if (hi * so4i >= a8 * hso4i) {
+            delta = delta2;
+        } else {
+            delta = delta1;
+        }
+    } else {
+        delta = 0.0;
+    }
+}
+
+void Solver::cal_cna(const Input& input, State& state) {
+    double x = state.w[3]; // Total HNO3
+    double delt = 0.0;
+    if (state.water > state.tiny) {
+        double kapa = state.molal[1]; // H+
+        double alfa = state.xk4 * state.r * state.temp * std::pow(state.water / state.gama[9], 2.0);
+        double diak = std::sqrt((kapa + alfa) * (kapa + alfa) + 4.0 * alfa * x);
+        delt = 0.5 * (-(kapa + alfa) + diak);
+    }
+
+    state.ghno3 = std::max(x - delt, 0.0);
+    state.molal[3] = delt; // NO3-
+    state.molal[1] = state.molal[1] + delt; // H+
 }
 
 void Solver::isrp3f(const Input& input, State& state) {

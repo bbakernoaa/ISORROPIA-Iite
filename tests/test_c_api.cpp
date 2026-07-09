@@ -6,13 +6,13 @@ TEST(CAPITest, SolveCCompatible) {
     IsorropiaInput input = {0.0};
     IsorropiaState state = {0.0};
 
-    // Set up standard NH4-SO4-NO3 metastable case (Run 1)
-    input.w[1] = 1.0;  // SO4
-    input.w[2] = 2.0;  // NH3
-    input.w[3] = 1.0;  // HNO3
-    input.org[0] = 10.0; // Org
-    input.org[1] = 0.15; // k_org
-    input.org[2] = 1000.0; // density
+    // Set up standard NH4-SO4-NO3 metastable case (Run 1 inputs scaled to standard mol/m3)
+    input.w[1] = (1.0 / 98.0) * 1e-6;  // H2SO4 -> mol/m3
+    input.w[2] = (2.0 / 17.0) * 1e-6;  // NH3 -> mol/m3
+    input.w[3] = (1.0 / 63.0) * 1e-6;  // HNO3 -> mol/m3
+    input.org[0] = 10.0 * 1e-9;        // Org -> kg/m3
+    input.org[1] = 0.15;               // k_org
+    input.org[2] = 1.0 * 1000.0;       // density -> kg/m3
     input.rh = 0.80;   // 80% RH
     input.temp = 298.15; // 298.15K
     input.iprob = 0;   // Forward Problem
@@ -25,9 +25,9 @@ TEST(CAPITest, SolveCCompatible) {
     EXPECT_DOUBLE_EQ(state.rh, 0.80);
     EXPECT_EQ(state.num_errors, 0);
 
-    // Verify outputs have exact match
-    EXPECT_NEAR(state.water, 8.088, 1e-4);
-    EXPECT_NEAR(state.gnh3, 1.595, 1e-4);
-    EXPECT_NEAR(state.ghno3, 0.7805, 1e-4);
-    EXPECT_NEAR(state.molal[1], 2.170e-5, 1e-8); // H+
+    // Verify outputs have exact match in standard physical units
+    EXPECT_NEAR(state.water, 7.89625e-9, 1e-12);
+    EXPECT_NEAR(state.gnh3 * 1e6, 9.5772e-2, 1e-4);  // Gaseous Ammonia in umol/m3
+    EXPECT_NEAR(state.ghno3 * 1e6, 1.4363e-2, 1e-4); // Gaseous Nitric Acid in umol/m3
+    EXPECT_NEAR(state.molal[1], 1.994e-12, 1e-14);  // H+ molality (mol/kg)
 }

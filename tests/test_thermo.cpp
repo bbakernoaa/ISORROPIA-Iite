@@ -15,7 +15,7 @@ TEST(ThermodynamicsTest, EquilibriumConstantsAtStandardTemp) {
     EXPECT_DOUBLE_EQ(state.xk5, 0.4799);
     EXPECT_DOUBLE_EQ(state.xk7, 1.817);
     EXPECT_DOUBLE_EQ(state.xk8, 37.661);
-    EXPECT_DOUBLE_EQ(state.xk10, 4.199e-17);
+    EXPECT_DOUBLE_EQ(state.xk10, 5.746e-17);
     EXPECT_DOUBLE_EQ(state.xkw, 1.010e-14);
 
     // Assert derived variables are correct

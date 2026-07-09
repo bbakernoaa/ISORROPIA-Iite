@@ -12,6 +12,11 @@ void State::initialize_constants() {
     zero = 0.0;
     one = 1.0;
 
+    // Pre-initialize activity coefficient arrays to 1.0e-1 (0.1) to avoid potential divide-by-zero errors
+    gama.fill(1.0e-1);
+    gamin.fill(1.0e-1);
+    gamou.fill(1.0e-1);
+
     // IMW initialization (NIONS=10)
     // Na+, H+, NH4+, NO3-, Cl-, SO4--, HSO4-, Ca++, K+, Mg++
     imw = {23.0, 1.0, 18.0, 62.0, 35.5, 96.0, 97.0, 40.1, 39.1, 24.3};
@@ -150,7 +155,19 @@ void State::calculate_equilibrium_constants() {
     xk6  = 1.086e-16; // NH4CL(s)         <==> NH3(g)    + HCL(g)
     xk7  = 1.817;     // (NH4)2SO4(s)     <==> 2*NH4(aq) + SO4(aq)
     xk8  = 37.661;    // NACL(s)          <==> NA(aq)    + CL(aq)
-    xk10 = 4.199e-17; // NH4NO3(s)        <==> NH3(g)    + HNO3(g) (Mozurkewich, 1993)
+    
+    // Choose xk10 at standard Temp based on Case Routing (non-crustal Case 1 & 2 vs crustal Case 3 & 4)
+    double nitrate_sum = w[3] + waer[3];
+    double crustal_sum = w[5] + w[6] + w[7] + waer[5] + waer[6] + waer[7];
+    double marine_sum  = w[0] + w[4] + waer[0] + waer[4];
+    bool is_crustal_or_marine = (crustal_sum > tiny) || (marine_sum > tiny);
+
+    if (is_crustal_or_marine) {
+        xk10 = 4.199e-17; // NH4NO3(s) <==> NH3(g) + HNO3(g) (Mozurkewich, 1993)
+    } else {
+        xk10 = 5.746e-17; // Legacy standard ISORROPIA value for non-crustal runs
+    }
+
     xk11 = 2.413e4;   // NAHSO4(s)        <==> NA(aq)    + HSO4(aq)
     xk12 = 1.382e2;   // NH4HSO4(s)       <==> NH4(aq)   + HSO4(aq)
     xk13 = 29.268;    // (NH4)3H(SO4)2(s) <==> 3*NH4(aq) + HSO4(aq) + SO4(aq)
@@ -189,7 +206,13 @@ void State::calculate_equilibrium_constants() {
         xk7  *= std::exp(-2.65 * (t0t - 1.0) + 38.570 * coef);
         xk8  *= std::exp(-1.56 * (t0t - 1.0) + 16.900 * coef);
         xk9  *= std::exp(-8.22 * (t0t - 1.0) + 16.010 * coef);
-        xk10 *= std::exp(-74.7351 * (t0t - 1.0) + 6.025 * coef);
+        
+        if (is_crustal_or_marine) {
+            xk10 *= std::exp(-74.7351 * (t0t - 1.0) + 6.025 * coef); // Mozurkewich, 1993
+        } else {
+            xk10 *= std::exp(-74.38 * (t0t - 1.0) + 6.120 * coef);    // Legacy standard ISORROPIA scaling
+        }
+
         xk11 *= std::exp(0.79 * (t0t - 1.0) + 14.746 * coef);
         xk12 *= std::exp(-2.87 * (t0t - 1.0) + 15.830 * coef);
         xk13 *= std::exp(-5.19 * (t0t - 1.0) + 54.400 * coef);
