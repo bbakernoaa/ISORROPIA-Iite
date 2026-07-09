@@ -12,3 +12,9 @@ target_link_libraries(isorropia_tests PRIVATE isorropia gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(isorropia_tests)
+
+# Fortran Linkage Test
+add_executable(isorropia_fortran_test test_linkage.f90)
+target_link_libraries(isorropia_fortran_test PRIVATE isorropia)
+
+add_test(NAME FortranLinkageTest COMMAND isorropia_fortran_test)

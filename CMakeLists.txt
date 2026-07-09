@@ -14,7 +14,8 @@ add_library(isorropia STATIC
   src/ReverseSolvers.cpp
   src/IsorropiaFortran.f90
 )
-target_include_directories(isorropia PUBLIC include)
+set_target_properties(isorropia PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+target_include_directories(isorropia PUBLIC include ${CMAKE_CURRENT_BINARY_DIR}/modules)
 
 # Executable target
 add_executable(isorropia_cli src/main.cpp)
