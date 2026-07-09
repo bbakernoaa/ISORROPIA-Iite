@@ -28,3 +28,14 @@ TEST(StateTest, ErrorStackOverflow) {
     EXPECT_EQ(state.num_errors, 25);
     EXPECT_TRUE(state.stack_overflow);
 }
+
+TEST(StateTest, InitializeConstantsAndWeights) {
+    Isorropia::State state;
+    state.initialize_constants();
+    
+    EXPECT_DOUBLE_EQ(state.r, 82.0567e-6);
+    EXPECT_DOUBLE_EQ(state.imw[0], 23.0); // Na+
+    EXPECT_DOUBLE_EQ(state.imw[2], 18.0); // NH4+
+    EXPECT_DOUBLE_EQ(state.wmw[1], 98.0); // H2SO4
+    EXPECT_DOUBLE_EQ(state.smw[5], 132.0); // (NH4)2SO4
+}

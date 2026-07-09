@@ -313,6 +313,40 @@ struct State {
         num_errors = 0;
         stack_overflow = false;
     }
+
+    //=======================================================================
+    // Physical Constants and Molecular Weights (BLOCK DATA BLKISO equivalents)
+    //=======================================================================
+    double r = 82.0567e-6;  ///< Gas constant. Maps to Fortran 'R' (m3 atm / mol K).
+    double tiny = 1e-20;    ///< Small threshold. Maps to Fortran 'TINY'.
+    double tiny2 = 1e-11;   ///< Small threshold 2. Maps to Fortran 'TINY2'.
+    double great = 1e10;    ///< Large threshold. Maps to Fortran 'GREAT'.
+    double zero = 0.0;      ///< Constant zero. Maps to Fortran 'ZERO'.
+    double one = 1.0;       ///< Constant one. Maps to Fortran 'ONE'.
+
+    // Molecular weights
+    std::array<double, 10> imw = {0.0};  ///< Molecular weights of 10 ions (g/mol). Maps to Fortran 'IMW(NIONS)'.
+                                         ///< 0: Na+ (23.0), 1: H+ (1.0), 2: NH4+ (18.0), 3: NO3- (62.0), 4: Cl- (35.5),
+                                         ///< 5: SO4^2- (96.0), 6: HSO4- (97.0), 7: Ca^2+ (40.1), 8: K+ (39.1), 9: Mg^2+ (24.3)
+    
+    std::array<double, 8> wmw = {0.0};   ///< Molecular weights of 8 components (g/mol). Maps to Fortran 'WMW(NCOMP)'.
+                                         ///< 0: Na (23.0), 1: H2SO4 (98.0), 2: NH3 (17.0), 3: HNO3 (63.0), 4: HCl (36.5),
+                                         ///< 5: Ca (40.1), 6: K (39.1), 7: Mg (24.3)
+
+    std::array<double, 23> smw = {0.0};  ///< Molecular weights of 23 active salt pairs (g/mol). Maps to Fortran 'SMW(NPAIR)'.
+                                         ///< 0: NaNO3 (85.0), 1: NH4NO3 (80.0), 2: NaCl (58.5), 3: NH4Cl (53.5),
+                                         ///< 4: Na2SO4 (142.0), 5: (NH4)2SO4 (132.0), 6: NaHSO4 (120.0), 7: NH4HSO4 (115.0),
+                                         ///< 8: H2SO4_aq (120.0), 9: Ca(NO3)2 (136.0), 10: CaSO4 (164.0), 11: CaCl2 (111.0),
+                                         ///< 12: K2SO4 (174.0), 13: KHSO4 (136.0), 14: KNO3 (101.0), 15: KCl (74.5),
+                                         ///< 16: MgSO4 (120.0), 17: Mg(NO3)2 (148.0), 18: MgCl2 (95.0), 19: H2O (18.0),
+                                         ///< 20-22: placeholders (0.0)
+
+    /**
+     * @brief Initializes molecular weights and fundamental physical constants.
+     * 
+     * Replicates block data initialization in Fortran 'BLOCK DATA BLKISO'.
+     */
+    void initialize_constants();
 };
 
 /**
