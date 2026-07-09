@@ -156,7 +156,7 @@ int main(int argc, char* argv[]) {
         double gnh3_print  = state.gnh3 * 17.0 * 1e6; // Gaseous Ammonia (MW=17) -> ug/m3
         double ghno3_print = state.ghno3 * 63.0 * 1e6; // Gaseous Nitric Acid (MW=63) -> ug/m3
         
-        double ph_print    = (state.molal[1] > 1e-15) ? -std::log10(state.molal[1]) : 7.0;
+        double ph_print    = (state.water > 1e-20 && state.molal[1] > 1e-30) ? -std::log10(state.molal[1] / state.water) : 7.0;
         double ionic_print = state.ionic;
         
         double wat_nh42so4 = state.watcmp[3] * 1e9;
