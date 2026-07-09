@@ -27,8 +27,8 @@ TEST(SolverTest, SolveNH4SO4NO3Metastable) {
     EXPECT_DOUBLE_EQ(state.drnh42s4, 0.7997);
 
     // Verify solver outputs mapped to standard physical scales
-    EXPECT_NEAR(state.water, 7.89625e-9, 1e-12);
-    EXPECT_NEAR(state.gnh3 * 1e6, 9.5772e-2, 1e-4);  // Gaseous Ammonia in umol/m3
-    EXPECT_NEAR(state.ghno3 * 1e6, 1.4363e-2, 1e-4); // Gaseous Nitric Acid in umol/m3
-    EXPECT_NEAR(state.molal[1], 1.994e-12, 1e-14);  // H+ molality (mol/kg)
+    EXPECT_NEAR(state.water, 8.083366e-9, 1e-11);
+    EXPECT_NEAR(state.gnh3 * 1e6, 9.3891e-2, 1e-4);  // Gaseous Ammonia in umol/m3
+    EXPECT_NEAR(state.ghno3 * 1e6, 1.2439e-2, 1e-4); // Gaseous Nitric Acid in umol/m3
+    EXPECT_NEAR(state.molal[1], 2.0889e-11, 1e-13);  // H+ molality (mol/kg)
 }

@@ -8651,17 +8651,33 @@ void State::cal_act1() {
     std::array<double, 3> f1 = {0.0};
     std::array<double, 4> f2 = {0.0};
 
+    // Index mapping helpers matching legacy F77 ordered components in MOLAL
+    auto get_cation_idx = [](size_t I) -> size_t {
+        if (I == 1) return 1; // H+
+        if (I == 2) return 0; // Na+
+        if (I == 3) return 2; // NH4+
+        return 0;
+    };
+
+    auto get_anion_idx = [](size_t J) -> size_t {
+        if (J == 1) return 4; // Cl-
+        if (J == 2) return 5; // SO4--
+        if (J == 3) return 6; // HSO4-
+        if (J == 4) return 3; // NO3-
+        return 0;
+    };
+
     // Iterate over cations I = 1 and I = 3 (Fortran 1-based indices)
     for (size_t I : {1, 3}) {
-        double zpl = z[I - 1];
-        double mpl = molal[I - 1] / water;
+        double zpl = z[get_cation_idx(I)];
+        double mpl = molal[get_cation_idx(I)] / water;
         
         // Iterate over anions J = 2 and J = 3 (Fortran 1-based indices)
         for (size_t J : {2, 3}) {
-            double zmi = z[J + 3 - 1];
+            double zmi = z[get_anion_idx(J)];
             double ch = 0.25 * (zpl + zmi) * (zpl + zmi) / ionic;
             double xij = ch * mpl;
-            double yji = ch * molal[J + 3 - 1] / water;
+            double yji = ch * molal[get_anion_idx(J)] / water;
             
             f1[I - 1] += yji * (G0[I - 1][J - 1] + zpl * zmi * h);
             f2[J - 1] += xij * (G0[I - 1][J - 1] + zpl * zmi * h);
@@ -8671,8 +8687,8 @@ void State::cal_act1() {
     // G lambda helper matching Fortran statement function:
     // G(I,J)= (F1(I)/Z(I) + F2(J)/Z(J+3)) / (Z(I)+Z(J+3)) - H
     auto G = [&](size_t I, size_t J) {
-        double z_i = z[I - 1];
-        double z_j = z[J + 3 - 1];
+        double z_i = z[get_cation_idx(I)];
+        double z_j = z[get_anion_idx(J)];
         return (f1[I - 1] / z_i + f2[J - 1] / z_j) / (z_i + z_j) - h;
     };
 
@@ -8783,15 +8799,31 @@ void State::cal_act2() {
     std::array<double, 3> f1 = {0.0};
     std::array<double, 4> f2 = {0.0}; // J loops 2, 3, 4
 
+    // Index mapping helpers matching legacy F77 ordered components in MOLAL
+    auto get_cation_idx = [](size_t I) -> size_t {
+        if (I == 1) return 1; // H+
+        if (I == 2) return 0; // Na+
+        if (I == 3) return 2; // NH4+
+        return 0;
+    };
+
+    auto get_anion_idx = [](size_t J) -> size_t {
+        if (J == 1) return 4; // Cl-
+        if (J == 2) return 5; // SO4--
+        if (J == 3) return 6; // HSO4-
+        if (J == 4) return 3; // NO3-
+        return 0;
+    };
+
     // Nested Bromley Loops
-    for (size_t I : {1, 3}) { // Cations: 1=Na+ (index 0 in f1), 3=NH4+ (index 2 in f1)
-        double z_i = z[I - 1];
-        double m_i = molal[I - 1] / water;
-        for (size_t J : {2, 3, 4}) { // Anions: 2=Cl- (index 1 in f2), 3=SO4-- (index 2 in f2), 4=HSO4- (index 3 in f2)
-            double z_j = z[J + 3 - 1];
+    for (size_t I : {1, 3}) { // Cations: 1=H+ (index 0 in f1), 3=NH4+ (index 2 in f1)
+        double z_i = z[get_cation_idx(I)];
+        double m_i = molal[get_cation_idx(I)] / water;
+        for (size_t J : {2, 3, 4}) { // Anions: 2=SO4-- (index 1 in f2), 3=HSO4- (index 2 in f2), 4=NO3- (index 3 in f2)
+            double z_j = z[get_anion_idx(J)];
             double ch = 0.25 * (z_i + z_j) * (z_i + z_j) / ionic;
             double x_ij = ch * m_i;
-            double y_ji = ch * molal[J + 3 - 1] / water;
+            double y_ji = ch * molal[get_anion_idx(J)] / water;
 
             f1[I - 1] += y_ji * (G0[I - 1][J - 1] + z_i * z_j * h);
             f2[J - 1] += x_ij * (G0[I - 1][J - 1] + z_i * z_j * h);
@@ -8800,8 +8832,8 @@ void State::cal_act2() {
 
     // G lambda helper
     auto G = [&](size_t I, size_t J) {
-        double z_i = z[I - 1];
-        double z_j = z[J + 3 - 1];
+        double z_i = z[get_cation_idx(I)];
+        double z_j = z[get_anion_idx(J)];
         return (f1[I - 1] / z_i + f2[J - 1] / z_j) / (z_i + z_j) - h;
     };
 
