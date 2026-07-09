@@ -304,6 +304,40 @@ struct State {
     double drmp3 = 0.0, drmp4 = 0.0, drmp5 = 0.0, drmv1 = 0.0;
 
     //=======================================================================
+    // COMMON /EQUK/ equivalents (Chemical Equilibrium Constants)
+    //=======================================================================
+    double xk1  = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK1'.
+    double xk2  = 0.0;  ///< Equilibrium constant (derived: xk21*xk22). Maps to Fortran 'XK2'.
+    double xk3  = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK3'.
+    double xk4  = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK4'.
+    double xk5  = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK5'.
+    double xk6  = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK6'.
+    double xk7  = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK7'.
+    double xk8  = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK8'.
+    double xk9  = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK9'.
+    double xk10 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK10'.
+    double xk11 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK11'.
+    double xk12 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK12'.
+    double xk13 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK13'.
+    double xk14 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK14'.
+    double xkw  = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XKW'.
+    double xk21 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK21'.
+    double xk22 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK22'.
+    double xk31 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK31'.
+    double xk32 = 0.0;  ///< Equilibrium constant (derived: xk3/xk31). Maps to Fortran 'XK32'.
+    double xk41 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK41'.
+    double xk42 = 0.0;  ///< Equilibrium constant (derived: xk4/xk41). Maps to Fortran 'XK42'.
+    double xk15 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK15'.
+    double xk16 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK16'.
+    double xk17 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK17'.
+    double xk18 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK18'.
+    double xk19 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK19'.
+    double xk20 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK20'.
+    double xk23 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK23'.
+    double xk24 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK24'.
+    double xk25 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK25'.
+
+    //=======================================================================
     // COMMON /ZSR/ equivalents (Water activities arrays)
     //=======================================================================
     std::array<double, 100> awas = {0.0};  ///< ZSR Water activity grid. Maps to Fortran 'AWAS(NZSR)'.
@@ -405,6 +439,13 @@ struct State {
      * Replicates DRH calculations and temperature dependency formulas from Fortran INIT subroutines.
      */
     void initialize_drh();
+
+    /**
+     * @brief Calculates temperature-dependent equilibrium constants.
+     * 
+     * Replicates calculations and corrections from Fortran subroutines (van 't Hoff equation).
+     */
+    void calculate_equilibrium_constants();
 };
 
 /**

@@ -128,4 +128,80 @@ void State::initialize_drh() {
     drmv1   = 0.494;    // (NH4)2SO4, NH4NO3, NA2SO4, K2SO4, MGSO4
 }
 
+void State::calculate_equilibrium_constants() {
+    //-----------------------------------------------------------------------
+    // Base equilibrium constants at T0 = 298.15 K
+    // Replicates INIT4 assignments in isocom.f
+    //-----------------------------------------------------------------------
+    xk1  = 1.015e-2;  // HSO4(aq)         <==> H(aq)     + SO4(aq)
+    xk21 = 57.639;    // NH3(g)           <==> NH3(aq)
+    xk22 = 1.805e-5;  // NH3(aq)          <==> NH4(aq)   + OH(aq)
+    xk3  = 1.971e6;   // HCL(g)           <==> H(aq)     + CL(aq)
+    xk31 = 2.500e3;   // HCL(g)           <==> HCL(aq)
+    xk4  = 2.511e6;   // HNO3(g)          <==> H(aq)     + NO3(aq)
+    xk41 = 2.100e5;   // HNO3(g)          <==> HNO3(aq)
+    xk5  = 0.4799;    // NA2SO4(s)        <==> 2*NA(aq)  + SO4(aq)
+    xk6  = 1.086e-16; // NH4CL(s)         <==> NH3(g)    + HCL(g)
+    xk7  = 1.817;     // (NH4)2SO4(s)     <==> 2*NH4(aq) + SO4(aq)
+    xk8  = 37.661;    // NACL(s)          <==> NA(aq)    + CL(aq)
+    xk10 = 4.199e-17; // NH4NO3(s)        <==> NH3(g)    + HNO3(g) (Mozurkewich, 1993)
+    xk11 = 2.413e4;   // NAHSO4(s)        <==> NA(aq)    + HSO4(aq)
+    xk12 = 1.382e2;   // NH4HSO4(s)       <==> NH4(aq)   + HSO4(aq)
+    xk13 = 29.268;    // (NH4)3H(SO4)2(s) <==> 3*NH4(aq) + HSO4(aq) + SO4(aq)
+    xk14 = 22.05;     // NH4CL(s)         <==> NH4(aq)   + CL(aq)
+    xkw  = 1.010e-14; // H2O              <==> H(aq)     + OH(aq)
+    xk9  = 11.977;    // NANO3(s)         <==> NA(aq)    + NO3(aq)
+    
+    xk15 = 6.067e5;   // CA(NO3)2(s)      <==> CA(aq)    + 2NO3(aq)
+    xk16 = 7.974e11;  // CACL2(s)         <==> CA(aq)    + 2CL(aq)
+    xk17 = 1.569e-2;  // K2SO4(s)         <==> 2K(aq)    + SO4(aq)
+    xk18 = 24.016;    // KHSO4(s)         <==> K(aq)     + HSO4(aq)
+    xk19 = 0.872;     // KNO3(s)          <==> K(aq)     + NO3(aq)
+    xk20 = 8.680;     // KCL(s)           <==> K(aq)     + CL(aq)
+    xk23 = 1.079e5;   // MGS04(s)         <==> MG(aq)    + SO4(aq)
+    xk24 = 2.507e15;  // MG(NO3)2(s)      <==> MG(aq)    + 2NO3(aq)
+    xk25 = 9.557e21;  // MGCL2(s)         <==> MG(aq)    + 2CL(aq)
+
+    //-----------------------------------------------------------------------
+    // Temperature corrections (if temperature is not 298.15K)
+    // Replicates van 't Hoff corrections in isocom.f
+    //-----------------------------------------------------------------------
+    if (static_cast<int>(temp) != 298) {
+        double t0  = 298.15;
+        double t0t = t0 / temp;
+        double coef = 1.0 + std::log(t0t) - t0t;
+
+        xk1  *= std::exp(8.85 * (t0t - 1.0) + 25.140 * coef);
+        xk21 *= std::exp(13.79 * (t0t - 1.0) - 5.393 * coef);
+        xk22 *= std::exp(-1.50 * (t0t - 1.0) + 26.920 * coef);
+        xk3  *= std::exp(30.20 * (t0t - 1.0) + 19.910 * coef);
+        xk31 *= std::exp(30.20 * (t0t - 1.0) + 19.910 * coef);
+        xk4  *= std::exp(29.17 * (t0t - 1.0) + 16.830 * coef);
+        xk41 *= std::exp(29.17 * (t0t - 1.0) + 16.830 * coef);
+        xk5  *= std::exp(0.98 * (t0t - 1.0) + 39.500 * coef);
+        xk6  *= std::exp(-71.00 * (t0t - 1.0) + 2.400 * coef);
+        xk7  *= std::exp(-2.65 * (t0t - 1.0) + 38.570 * coef);
+        xk8  *= std::exp(-1.56 * (t0t - 1.0) + 16.900 * coef);
+        xk9  *= std::exp(-8.22 * (t0t - 1.0) + 16.010 * coef);
+        xk10 *= std::exp(-74.7351 * (t0t - 1.0) + 6.025 * coef);
+        xk11 *= std::exp(0.79 * (t0t - 1.0) + 14.746 * coef);
+        xk12 *= std::exp(-2.87 * (t0t - 1.0) + 15.830 * coef);
+        xk13 *= std::exp(-5.19 * (t0t - 1.0) + 54.400 * coef);
+        xk14 *= std::exp(24.55 * (t0t - 1.0) + 16.900 * coef);
+        xkw  *= std::exp(-22.52 * (t0t - 1.0) + 26.920 * coef);
+        
+        xk17 *= std::exp(-9.585 * (t0t - 1.0) + 45.81 * coef);
+        xk18 *= std::exp(-8.423 * (t0t - 1.0) + 17.96 * coef);
+        xk19 *= std::exp(-14.08 * (t0t - 1.0) + 19.39 * coef);
+        xk20 *= std::exp(-6.902 * (t0t - 1.0) + 19.95 * coef);
+        
+        // Note: xk15, xk16, xk23, xk24, xk25 temperature corrections are 0.0 in Fortran
+    }
+
+    // Derived equilibrium constants
+    xk2  = xk21 * xk22;
+    xk42 = xk4 / xk41;
+    xk32 = xk3 / xk31;
+}
+
 } // namespace Isorropia
