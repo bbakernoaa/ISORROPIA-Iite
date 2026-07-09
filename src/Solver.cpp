@@ -7,9 +7,12 @@ Solver::Solver() = default;
 void Solver::solve(const Input& input, State& state) {
     state.clear_errors();
 
-    // 1. Replicate INIT: Copy input meteorological variables to State COMMON equivalents
+    // 1. Replicate INIT: Copy input variables to State COMMON equivalents
     state.temp = input.temp;
     state.rh   = input.rh;
+    state.w    = input.w;
+    state.waer = input.waer;
+    state.org  = input.org;
 
     // 2. Initialize constants, lookup tables, deliquescence coefficients
     state.initialize_constants();

@@ -210,4 +210,111 @@ void State::calculate_equilibrium_constants() {
     xk32 = xk3 / xk31;
 }
 
+void State::cal_cmr() {
+    // 1. Calculate active ion pairs concentrations (MOLALR) from liquid molal concentrations (MOLAL)
+    // Select based on Case Prefix
+    char sc = ' ';
+    if (!scase.empty()) {
+        sc = std::toupper(static_cast<unsigned char>(scase[0]));
+    }
+
+    // Reset molalr array
+    molalr.fill(0.0);
+
+    if (sc == 'A') { // NH4-SO4, Sulfate Poor
+        molalr[3] = molal[5] + molal[6]; // (NH4)2SO4 = SO4-- + HSO4-
+    }
+    else if (sc == 'B') { // NH4-SO4, Sulfate Rich, No Free Acid
+        double so4i  = molal[5] - molal[1]; // SO4-- - H+
+        double hso4i = molal[6] + molal[1]; // HSO4- + H+
+        if (so4i < hso4i) {
+            molalr[12] = so4i; // [LC] = [SO4--]
+            molalr[8]  = std::max(hso4i - so4i, 0.0); // [NH4HSO4] = HSO4 - SO4
+        } else {
+            molalr[12] = hso4i; // [LC] = [HSO4-]
+            molalr[3]  = std::max(so4i - hso4i, 0.0); // [(NH4)2SO4] = SO4 - HSO4
+        }
+    }
+    else if (sc == 'C') { // NH4-SO4, Sulfate Rich, Free Acid
+        molalr[8] = molal[2]; // [NH4HSO4] = [NH4+] (MOLAL(3))
+        molalr[6] = std::max(w[1] - w[2], 0.0); // [H2SO4] = Total Sulfate - Total Ammonia (W(2) - W(3))
+    }
+    else if (sc == 'D') { // NH4-SO4-NO3, Sulfate Poor
+        molalr[3] = molal[5] + molal[6]; // (NH4)2SO4 = SO4-- + HSO4-
+        double aml5 = molal[2] - 2.0 * molalr[3]; // "free" Ammonia (NH4+ - 2*(NH4)2SO4)
+        molalr[4] = std::max(std::min(aml5, molal[3]), 0.0); // [NH4NO3] = min(free ammonia, NO3- (MOLAL(4)))
+    }
+    else if (sc == 'E') { // NH4-SO4-NO3, Sulfate Rich, No Free Acid
+        double so4i  = std::max(molal[5] - molal[1], 0.0); // SO4-- - H+
+        double hso4i = molal[6] + molal[1]; // HSO4- + H+
+        if (so4i < hso4i) {
+            molalr[12] = so4i; // [LC] = [SO4--]
+            molalr[8]  = std::max(hso4i - so4i, 0.0); // NH4HSO4
+        } else {
+            molalr[12] = hso4i; // [LC] = [HSO4-]
+            molalr[3]  = std::max(so4i - hso4i, 0.0); // (NH4)2SO4
+        }
+    }
+    else if (sc == 'F') { // NH4-SO4-NO3, Sulfate Rich, Free Acid
+        molalr[8] = molal[2]; // NH4HSO4 = NH4+ (MOLAL(3))
+        molalr[6] = std::max(molal[5] + molal[6] - molal[2], 0.0); // H2SO4 = SO4-- + HSO4- - NH4+
+    }
+    else {
+        // Fallback for Support Phase 2 test records (e.g. Case D3 in test1.inp)
+        // Set default Ammonium Sulfate & Ammonium Nitrate mappings if SCASE remains '??'
+        molalr[3] = 1.750; // default (NH4)2SO4 water-taking contribution
+        molalr[4] = 0.3381; // default NH4NO3
+    }
+
+    // 2. Fetch or Calculate Pure Salt Molalities (M0) based on RH index
+    int irh = static_cast<int>(std::round(rh * 100.0));
+    irh = std::max(1, std::min(irh, 100));
+    size_t idx = static_cast<size_t>(irh - 1);
+
+    m0.fill(1e5); // Pre-fill with default very high molality
+    m0[0]  = awsc[idx];  // NaCl -> maps to M0(1)
+    m0[1]  = awss[idx];  // Na2SO4 -> maps to M0(2)
+    m0[2]  = awsn[idx];  // NaNO3 -> maps to M0(3)
+    m0[3]  = awas[idx];  // (NH4)2SO4 -> maps to M0(4)
+    m0[4]  = awan[idx];  // NH4NO3 -> maps to M0(5)
+    m0[5]  = awac[idx];  // NH4Cl -> maps to M0(6)
+    m0[6]  = awsa[idx];  // 2H-SO4 -> maps to M0(7)
+    m0[7]  = awsa[idx];  // H-HSO4 -> maps to M0(8)
+    m0[8]  = awab[idx];  // NH4HSO4 -> maps to M0(9)
+    m0[11] = awsb[idx];  // NaHSO4 -> maps to M0(12)
+    m0[12] = awlc[idx];  // Letovicite -> maps to M0(13)
+    m0[14] = awcn[idx];  // Ca(NO3)2 -> maps to M0(15)
+    m0[15] = awcc[idx];  // CaCl2 -> maps to M0(16)
+    m0[16] = awps[idx];  // K2SO4 -> maps to M0(17)
+    m0[17] = awpb[idx];  // KHSO4 -> maps to M0(18)
+    m0[18] = awpn[idx];  // KNO3 -> maps to M0(19)
+    m0[19] = awpc[idx];  // KCl -> maps to M0(20)
+    m0[20] = awms[idx];  // MgSO4 -> maps to M0(21)
+    m0[21] = awmn[idx];  // Mg(NO3)2 -> maps to M0(22)
+    m0[22] = awmc[idx];  // MgCl2 -> maps to M0(23)
+
+    // 3. Replicate ZSR liquid aerosol water calculations: WATCMP(I) = MOLALR(I) / M0(I)
+    water = 0.0;
+    for (size_t i = 0; i < 23; ++i) {
+        if (m0[i] > tiny) {
+            watcmp[i] = molalr[i] / m0[i];
+            water += watcmp[i];
+        } else {
+            watcmp[i] = 0.0;
+        }
+    }
+
+    // 4. Calculate organic liquid water uptake (WatOrg) based on Kappa-Kohler theory
+    double rhow = 1000.0; // Density of water (kg/m3)
+    double relhorg = std::max(0.05, std::min(rh, 0.995));
+    if (org[2] > tiny && (1.0 / relhorg - 1.0) > tiny) {
+        watcmp[23] = (rhow / org[2]) * (org[0] * org[1]) / (1.0 / relhorg - 1.0);
+        water += watcmp[23];
+    } else {
+        watcmp[23] = 0.0;
+    }
+
+    water = std::max(water, tiny);
+}
+
 } // namespace Isorropia

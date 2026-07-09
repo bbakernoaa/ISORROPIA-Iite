@@ -126,10 +126,13 @@ struct ErrorEntry {
  */
 struct State {
     //=======================================================================
-    // COMMON /INPT/ equivalents (Meteorological state)
+    // COMMON /INPT/ equivalents (Meteorological state and inputs)
     //=======================================================================
     double temp = 298.15;  ///< Ambient temperature (Kelvin). Maps to Fortran 'TEMP' in COMMON /INPT/.
     double rh = 0.0;       ///< Ambient relative humidity (fraction [0.0 - 1.0]). Maps to Fortran 'RH' in COMMON /INPT/.
+    std::array<double, 8> w = {0.0};     ///< Total concentrations copy. Maps to Fortran 'W(NCOMP)' in COMMON /INPT/.
+    std::array<double, 8> waer = {0.0};  ///< Aerosol concentrations copy. Maps to Fortran 'WAER(NCOMP)' in COMMON /INPT/.
+    std::array<double, 3> org = {0.0};   ///< Organic concentrations copy. Maps to Fortran 'ORG(NORG)' in COMMON /INPT/.
 
     //=======================================================================
     // COMMON /IONS/ equivalents (Liquid aerosol phase properties)
@@ -338,6 +341,11 @@ struct State {
     double xk25 = 0.0;  ///< Equilibrium constant. Maps to Fortran 'XK25'.
 
     //=======================================================================
+    // COMMON /CASE/ equivalents (Simulation Case and Regimes)
+    //=======================================================================
+    std::string scase = "??";  ///< Solution regime/case description. Maps to Fortran 'SCASE' in COMMON /CASE/.
+
+    //=======================================================================
     // COMMON /ZSR/ equivalents (Water activities arrays)
     //=======================================================================
     std::array<double, 100> awas = {0.0};  ///< ZSR Water activity grid. Maps to Fortran 'AWAS(NZSR)'.
@@ -463,6 +471,13 @@ struct State {
      * Replaces Fortran 'SUBROUTINE CALCACT1'.
      */
     void cal_act1();
+
+    /**
+     * @brief Computes dynamic multi-species liquid water content of the aerosol using the ZSR relation.
+     * 
+     * Replaces Fortran 'SUBROUTINE CALCMR'.
+     */
+    void cal_cmr();
 };
 
 /**
