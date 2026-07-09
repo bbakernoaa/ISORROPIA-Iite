@@ -463,6 +463,21 @@ public:
      * @param state The local state structure where results are calculated and stored.
      */
     void solve(const Input& input, State& state);
+
+private:
+    /**
+     * @brief Forward solver for NH4-SO4-H2O systems (Case 1).
+     * 
+     * Maps to legacy Fortran 'SUBROUTINE ISRP1F' in 'isofwd.f'.
+     */
+    void isrp1f(const Input& input, State& state);
+
+    /**
+     * @brief Forward solver for NH4-SO4-NO3-H2O systems (Case 2).
+     * 
+     * Maps to legacy Fortran 'SUBROUTINE ISRP2F' in 'isofwd.f'.
+     */
+    void isrp2f(const Input& input, State& state);
 };
 
 } // namespace Isorropia
