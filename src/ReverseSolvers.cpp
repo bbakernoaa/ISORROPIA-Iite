@@ -120,14 +120,17 @@ static const std::array<double, 280> ASRAT = {
 
 double Solver::getasr(double so4i, double rhi) {
     // Replicates FUNCTION GETASR and BLOCK DATA AERSR
-    double rat = so4i / 1.e-9;
+    double safe_so4 = std::max(1e-20, so4i);
+    double safe_rh  = std::max(0.01, std::min(0.99, rhi));
+
+    double rat = safe_so4 / 1.e-9;
     double a1_val = std::floor(std::log10(rat));
     int ia1 = static_cast<int>(rat / 2.5 / std::pow(10.0, a1_val));
 
     int inds = static_cast<int>(4.0 * a1_val) + std::min(ia1, 4);
     inds = std::min(std::max(0, inds), 13) + 1; // 1-based index mapping to INDS
 
-    int indr = static_cast<int>(99.0 - rhi * 100.0) + 1;
+    int indr = static_cast<int>(99.0 - safe_rh * 100.0) + 1;
     indr = std::min(std::max(1, indr), 20);
 
     int indsl = inds;
@@ -136,7 +139,7 @@ double Solver::getasr(double so4i, double rhi) {
     int iposl = (indsl - 1) * 20 + indr - 1; // 0-based offset
     int iposh = (indsh - 1)* 20 + indr - 1;
 
-    double wf = (so4i - ASSO4[indsl - 1]) / (ASSO4[indsh - 1] - ASSO4[indsl - 1] + 1e-7);
+    double wf = (safe_so4 - ASSO4[indsl - 1]) / (ASSO4[indsh - 1] - ASSO4[indsl - 1] + 1e-7);
     wf = std::min(std::max(wf, 0.0), 1.0);
 
     return wf * ASRAT[iposh] + (1.0 - wf) * ASRAT[iposl];

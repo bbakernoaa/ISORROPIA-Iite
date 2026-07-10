@@ -8423,14 +8423,15 @@ static constexpr std::array<double, 561> bnc23m_323 = {
 };
 
 void State::km_tab(double ionic_strength, double temp_k, std::array<double, 23>& g0) {
-    // 1. Calculate the nearest lookup position in 561-size grids
+    // 1. Calculate the nearest lookup position in 561-size grids (with non-negative clamp to prevent segfaults)
+    double safe_ionic = std::max(0.0, ionic_strength);
     int ipos = 0;
-    if (ionic_strength <= 20.0) {
-        ipos = std::min(static_cast<int>(std::round(20.0 * ionic_strength)) + 1, 400);
+    if (safe_ionic <= 20.0) {
+        ipos = std::min(static_cast<int>(std::round(20.0 * safe_ionic)) + 1, 400);
     } else {
-        ipos = 400 + static_cast<int>(std::round(2.0 * ionic_strength - 40.0));
+        ipos = 400 + static_cast<int>(std::round(2.0 * safe_ionic - 40.0));
     }
-    ipos = std::min(ipos, 561);
+    ipos = std::max(1, std::min(ipos, 561));
     size_t idx = static_cast<size_t>(ipos - 1);
 
     // 2. Determine temperature index IND (198 to 323 K in intervals of 25K)

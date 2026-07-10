@@ -67,14 +67,30 @@ int main(int argc, char* argv[]) {
     bool headers_done = false;
     std::vector<InputRecord> records;
 
+    // Control values parsed from the header of the .inp file, matching the
+    // legacy Fortran main.f reading order:
+    //   1st numeric line  -> input units (INUNIT): 0 = umol/m3, 1 = ug/m3
+    //   2nd numeric line  -> problem type (IPROB): 0 = forward, 1 = reverse
+    //                        (the trailing phase-state field is intentionally
+    //                         ignored; ISORROPIA-Lite is metastable-only, just
+    //                         like the reference Fortran binary).
+    std::vector<int> control_values;
+
     while (std::getline(infile, line)) {
         std::string trimmed = trim_str(line);
         if (trimmed.empty() || trimmed[0] == 'C' || trimmed[0] == '#' || trimmed[0] == '*') continue;
-        
+
         if (!headers_done) {
             // Locate species column header row
             if (trimmed.find("Na") != std::string::npos && trimmed.find("SO4") != std::string::npos) {
                 headers_done = true;
+                continue;
+            }
+            // Otherwise, capture leading numeric control tokens (units, iprob).
+            std::stringstream cs(trimmed);
+            double ctrl_val;
+            if (cs >> ctrl_val) {
+                control_values.push_back(static_cast<int>(std::lround(ctrl_val)));
             }
             continue;
         }
@@ -86,7 +102,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Resolve control values (defaults match legacy behavior: ug/m3, forward).
+    int input_units = control_values.size() > 0 ? control_values[0] : 1;
+    int iprob       = control_values.size() > 1 ? control_values[1] : 0;
+
     std::cout << "Parsed " << records.size() << " records from input file." << std::endl;
+    std::cout << "Input units: " << (input_units == 0 ? "umol/m3" : "ug/m3")
+              << " | Problem type: " << (iprob == 1 ? "REVERSE" : "FORWARD")
+              << " | Aerosol state: METASTABLE (liquid only)" << std::endl;
 
     // Output filename
     std::string base_name = input_file;
@@ -113,15 +136,15 @@ int main(int argc, char* argv[]) {
         const auto& rec = records[r];
 
         Isorropia::Input input;
-        // Convert input masses from ug/m3 to mol/m3 inside the solver
-        input.w[0] = std::max((rec.na / 23.0) * 1e-6, 0.0);
-        input.w[1] = std::max((rec.so4 / 98.0) * 1e-6, 0.0);
-        input.w[2] = std::max((rec.nh3 / 17.0) * 1e-6, 0.0);
-        input.w[3] = std::max((rec.no3 / 63.0) * 1e-6, 0.0);
-        input.w[4] = std::max((rec.cl / 36.5) * 1e-6, 0.0);
-        input.w[5] = std::max((rec.ca / 40.1) * 1e-6, 0.0);
-        input.w[6] = std::max((rec.k / 39.1) * 1e-6, 0.0);
-        input.w[7] = std::max((rec.mg / 24.3) * 1e-6, 0.0);
+        // Convert total/aerosol inputs to mol/m3, honoring the input-unit flag
+        // (mirrors Fortran INPDAT: umol/m3 -> *1e-6; ug/m3 -> /MW *1e-6).
+        const double raw[8] = {rec.na, rec.so4, rec.nh3, rec.no3, rec.cl, rec.ca, rec.k, rec.mg};
+        for (size_t i = 0; i < 8; ++i) {
+            double mol_per_m3 = (input_units == 0)
+                ? raw[i] * 1e-6          // umol/m3 -> mol/m3
+                : (raw[i] / wmw[i]) * 1e-6; // ug/m3   -> mol/m3
+            input.w[i] = std::max(mol_per_m3, 0.0);
+        }
 
         // Convert Organic concentrations to kilograms/m3 (ug/m3 to kg/m3) and density to kg/m3
         input.org[0] = rec.org * 1e-9;
@@ -130,37 +153,36 @@ int main(int argc, char* argv[]) {
 
         input.rh = rec.rh;
         input.temp = rec.temp;
-        
-        // Check if filename contains 'Reverse' or 'reverse'
-        std::string lower_file = input_file;
-        std::transform(lower_file.begin(), lower_file.end(), lower_file.begin(), ::tolower);
-        if (lower_file.find("reverse") != std::string::npos) {
-            input.iprob = 1; // Reverse Problem
+
+        // Problem type comes from the .inp control line (not the filename).
+        if (iprob == 1) {
+            input.iprob = 1; // Reverse problem: inputs are aerosol-phase totals
             std::copy(input.w.begin(), input.w.end(), input.waer.begin());
             std::fill(input.w.begin(), input.w.end(), 0.0);
         } else {
-            input.iprob = 0; // Forward Problem
+            input.iprob = 0; // Forward problem
         }
         input.nadj = 1;
+
 
         Isorropia::State state;
         solver.solve(input, state);
 
         // Dynamically compute correct outputs in ug/m3 to match test1.txt reference columns
         double water_val = state.water * 1e9; // water in ug/m3 (since state.water is in kg/m3)
-        
+
         double h_print     = state.molal[1] * 1.0 * 1e6;  // mol/m3 * MW * 1e6 -> ug/m3
         double nh4_print   = state.molal[2] * 18.0 * 1e6; // NH4+ (MW=18)
         double no3_print   = state.molal[3] * 62.0 * 1e6; // NO3- (MW=62)
         double so4_print   = state.molal[5] * 96.0 * 1e6; // SO4-- (MW=96)
         double hso4_print  = state.molal[6] * 97.0 * 1e6; // HSO4- (MW=97)
-        
+
         double gnh3_print  = state.gnh3 * 17.0 * 1e6; // Gaseous Ammonia (MW=17) -> ug/m3
         double ghno3_print = state.ghno3 * 63.0 * 1e6; // Gaseous Nitric Acid (MW=63) -> ug/m3
-        
+
         double ph_print    = (state.water > 1e-20 && state.molal[1] > 1e-30) ? -std::log10(state.molal[1] / state.water) : 7.0;
         double ionic_print = state.ionic;
-        
+
         double wat_nh42so4 = state.watcmp[3] * 1e9;
         double wat_nh4no3  = state.watcmp[4] * 1e9;
         double wat_org     = state.watcmp[23] * 1e9;

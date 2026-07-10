@@ -53,7 +53,7 @@ def parse_report_file(filepath):
 
     return records
 
-def generate_random_inputs(num_records=100):
+def generate_random_inputs(num_records=100000):
     """
     Generates dynamic atmospheric scenarios inside a standard .inp file.
     """
@@ -157,7 +157,7 @@ def analyze_variance(ref_records, target_records, scenarios):
     # Calculate statistics
     report_lines = []
     report_lines.append("# ISORROPIA-Lite Physical Speciation Property Variance Report\n")
-    report_lines.append("This report dynamically audits the numerical equivalence and variance of the modernized **C++17 dynamic thermodynamics solver** against the legacy **F77 Fortran reference binary** across **100 randomized scenarios** covering arbitrary meteorology ($RH \\in [20\\%, 95\\%]$, $Temp \\in [265, 315]\\text{ K}$) and chemical components.\n")
+    report_lines.append("This report dynamically audits the numerical equivalence and variance of the modernized **C++17 dynamic thermodynamics solver** against the legacy **F77 Fortran reference binary** across **100000 randomized scenarios** covering arbitrary meteorology ($RH \\in [20\\%, 95\\%]$, $Temp \\in [265, 315]\\text{ K}$) and chemical components.\n")
     
     report_lines.append("## 1. Summary Statistics of Discrepancies\n")
     report_lines.append("| Speciation Variable | Mean Relative Diff / Abs (pH) | Max Diff | Std Dev | Physical State Status |")
@@ -232,7 +232,7 @@ def analyze_variance(ref_records, target_records, scenarios):
     with open(out_report, 'w') as f:
         f.write("\n".join(report_lines))
         
-    print(f"\n🎉 SUCCESS: Calculated relative property variance across 100 random situations!")
+    print(f"\n🎉 SUCCESS: Calculated relative property variance across 100000 random situations!")
     print(f"👉 Detailed scientific report written to: {out_report}")
 
 def main():
@@ -245,12 +245,12 @@ def main():
     cpp_bin = os.path.join(base_dir, "build", "isorropia_cli")
     
     # 1. Generate randomized configurations
-    inp_lines, scenarios = generate_random_inputs(100)
+    inp_lines, scenarios = generate_random_inputs(100000)
     
     inp_file = os.path.join(fortran_dir, "variance_test.inp")
     with open(inp_file, 'w') as f:
         f.write("\n".join(inp_lines) + "\n")
-    print(f"Generated 100 randomized inputs in {inp_file}")
+    print(f"Generated 100000 randomized inputs in {inp_file}")
     
     # 2. Run legacy F77 binary
     print("Executing legacy Fortran isolite binary...")
