@@ -238,8 +238,9 @@ def analyze_variance(ref_records, target_records, scenarios):
 def main():
     print("=== ISORROPIA-Lite Property-Based Fortran-to-C++ Variance Checker ===")
     
-    # Define directories
-    base_dir = "/Users/barry/Documents/ISORROPIA-Iite"
+    # Define directories relative to project root
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.join(script_dir, "..")
     fortran_dir = os.path.join(base_dir, "isolite1_0_src")
     fortran_bin = os.path.join(fortran_dir, "isolite")
     cpp_bin = os.path.join(base_dir, "build", "isorropia_cli")
