@@ -8430,7 +8430,7 @@ void State::km_tab(double ionic_strength, double temp_k, std::array<double, 23>&
     } else {
         ipos = 400 + static_cast<int>(std::round(2.0 * ionic_strength - 40.0));
     }
-    ipos = std::min(ipos, 561);
+    ipos = std::max(1, std::min(ipos, 561));
     size_t idx = static_cast<size_t>(ipos - 1);
 
     // 2. Determine temperature index IND (198 to 323 K in intervals of 25K)

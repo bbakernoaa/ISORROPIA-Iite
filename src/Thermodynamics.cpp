@@ -18,6 +18,9 @@ void State::initialize_constants() {
     gamin.fill(1.0e-1);
     gamou.fill(1.0e-1);
 
+    // Initialize water to TINY to match Fortran's ISOINIT3
+    water = tiny;
+
     // IMW initialization (NIONS=10)
     // Na+, H+, NH4+, NO3-, Cl-, SO4--, HSO4-, Ca++, K+, Mg++
     imw = {23.0, 1.0, 18.0, 62.0, 35.5, 96.0, 97.0, 40.1, 39.1, 24.3};
