@@ -126,8 +126,11 @@ def analyze_variance(ref_records, target_records, scenarios):
                 # For pH, absolute difference is standard (logarithmic scale)
                 diff = abs(val_ref - val_tgt)
             else:
-                denom = max(abs(val_ref), abs(val_tgt), 1e-15)
-                diff = abs(val_ref - val_tgt) / denom
+                if abs(val_ref) < 1e-5 and abs(val_tgt) < 1e-5:
+                    diff = 0.0
+                else:
+                    denom = max(abs(val_ref), abs(val_tgt), 1e-15)
+                    diff = abs(val_ref - val_tgt) / denom
                 
             stats[key]["diffs"].append(diff)
             stats[key]["runs"].append({

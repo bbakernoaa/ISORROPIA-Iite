@@ -8605,14 +8605,10 @@ void State::cal_act1() {
     gamin[3] = gama[3];
     gamin[12] = gama[12];
 
-    // 2. Calculate Ionic Strength of Solution (replaces F77 MOLAL(2) = ZERO (Na+), MOLAL(4) = ZERO (Cl-), MOLAL(7) = ZERO (NO3-))
+    // 2. Calculate Ionic Strength of Solution (Case 1 resets Na+, Cl-, and NO3- to zero, sums first 7 ions)
     ionic = 0.0;
-    molal[0] = 0.0; // Na+ is reset (maps to MOLAL(1) in Fortran)
-    molal[3] = 0.0; // NO3- is reset (maps to MOLAL(7) in Fortran)
-    molal[4] = 0.0; // Cl- is reset (maps to MOLAL(4) in Fortran)
-    
-    // Sum concentrations of active ions: Na+, H+, NH4+, NO3-, Cl-, SO4--, HSO4- (indices 0 to 6)
-    for (size_t i = 0; i <= 6; ++i) {
+    for (size_t i = 0; i < 7; ++i) { // Na+, H+, NH4+, NO3-, Cl-, SO4--, HSO4- (indices 0 to 6)
+        if (i == 0 || i == 3 || i == 4) continue; // Skip Na+, NO3-, and Cl- contribution safely without mutating molal array
         ionic += molal[i] * z[i] * z[i];
     }
     ionic = std::max(std::min(0.5 * ionic / water, 100.0), tiny);
@@ -8761,11 +8757,10 @@ void State::cal_act2() {
     gamin[4] = gama[4];
     gamin[12] = gama[12];
 
-    // 2. Calculate Ionic Strength of Solution (replaces F77 MOLAL(2)=ZERO and MOLAL(4)=ZERO which is Na+ and Cl- respectively)
+    // 2. Calculate Ionic Strength of Solution (Case 2 resets Na+ and Cl- to zero, sums first 7 ions)
     ionic = 0.0;
-    molal[0] = 0.0; // Na+ is reset
-    molal[4] = 0.0; // Cl- is reset
-    for (size_t i = 0; i <= 6; ++i) {
+    for (size_t i = 0; i < 7; ++i) { // Na+, H+, NH4+, NO3-, Cl-, SO4--, HSO4- (indices 0 to 6)
+        if (i == 0 || i == 4) continue; // Skip Na+ and Cl- contribution safely without mutating molal array
         ionic += molal[i] * z[i] * z[i];
     }
     ionic = std::max(std::min(0.5 * ionic / water, 100.0), tiny);
@@ -8911,7 +8906,7 @@ void State::cal_act3() {
         gamin[i] = gama[i];
     }
 
-    // 2. Calculate Ionic Strength of Solution
+    // 2. Calculate Ionic Strength of Solution (Case 3 sums first 7 active ions, no resets)
     ionic = 0.0;
     for (size_t i = 0; i < 7; ++i) { // Na+, H+, NH4+, NO3-, Cl-, SO4--, HSO4- (indices 0 to 6)
         ionic += molal[i] * z[i] * z[i];
@@ -9030,9 +9025,9 @@ void State::cal_act4() {
         gamin[i] = gama[i];
     }
 
-    // 2. Calculate Ionic Strength of Solution (all 10 active ions)
+    // 2. Calculate Ionic Strength of Solution (Case 4 sums all 10 active ions, no resets)
     ionic = 0.0;
-    for (size_t i = 0; i < 10; ++i) {
+    for (size_t i = 0; i < 10; ++i) { // Na+, H+, NH4+, NO3-, Cl-, SO4--, HSO4-, Ca++, K+, Mg++ (indices 0 to 9)
         ionic += molal[i] * z[i] * z[i];
     }
     ionic = std::max(std::min(0.5 * ionic / water, 100.0), tiny);

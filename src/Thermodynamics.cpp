@@ -11,6 +11,7 @@ void State::initialize_constants() {
     great = 1.0e10;
     zero = 0.0;
     one = 1.0;
+    epsact = 0.05; // F77 exact default value (5D-2) for activity convergence tolerance
 
     // Pre-initialize activity coefficient arrays to 1.0e-1 (0.1) to avoid potential divide-by-zero errors
     gama.fill(1.0e-1);

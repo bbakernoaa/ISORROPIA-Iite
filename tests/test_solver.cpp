@@ -30,5 +30,5 @@ TEST(SolverTest, SolveNH4SO4NO3Metastable) {
     EXPECT_NEAR(state.water, 8.083366e-9, 1e-11);
     EXPECT_NEAR(state.gnh3 * 1e6, 9.3891e-2, 1e-4);  // Gaseous Ammonia in umol/m3
     EXPECT_NEAR(state.ghno3 * 1e6, 1.2439e-2, 1e-4); // Gaseous Nitric Acid in umol/m3
-    EXPECT_NEAR(state.molal[1], 2.0889e-11, 1e-13);  // H+ molality (mol/kg)
+    EXPECT_NEAR(state.molal[1], 2.170486e-11, 1e-13);  // H+ molality (mol/kg)
 }

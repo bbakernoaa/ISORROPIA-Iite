@@ -1020,6 +1020,8 @@ double Solver::funch6a(double x, const Input& input, State& state) {
 
     double psi7 = chi7;
     double psi8 = chi8;
+    double psi4 = 0.0;
+    double psi5 = 0.0;
 
     int nsweep = 4;
     for (int sweep = 0; sweep < nsweep; ++sweep) {
@@ -1027,14 +1029,14 @@ double Solver::funch6a(double x, const Input& input, State& state) {
         double a5 = state.xk4 * state.r * state.temp * std::pow(state.water / state.gama[9], 2.0);
         double a6 = state.xk3 * state.r * state.temp * std::pow(state.water / state.gama[10], 2.0);
 
-        double psi5 = chi5 * (psi6 + psi7) - (a6 / a5) * psi8 * (chi6 - psi6 - psi3);
+        psi5 = chi5 * (psi6 + psi7) - (a6 / a5) * psi8 * (chi6 - psi6 - psi3);
         psi5 = psi5 / ((a6 / a5) * (chi6 - psi6 - psi3) + psi6 + psi7);
         psi5 = std::max(psi5, state.tiny);
 
         double bb = -(state.w[2] + psi6 + psi5 + 1.0 / a4);
         double cc = state.w[2] * (psi5 + psi6);
         double dd = bb * bb - 4.0 * cc;
-        double psi4 = 0.5 * (-bb - std::sqrt(dd));
+        psi4 = 0.5 * (-bb - std::sqrt(dd));
         psi4 = std::min(psi4, state.w[2]);
 
         state.molal[0] = psi8 + psi7 + 2.0 * psi1; // Na+
@@ -1066,6 +1068,23 @@ double Solver::funch6a(double x, const Input& input, State& state) {
             break;
         }
     }
+
+    // Re-populate final speciation outside the loop (to prevent zero-out by cal_act3)
+    state.molal[0] = chi8 + chi7 + 2.0 * psi1; // Na+
+    state.molal[2] = psi4;                    // NH4+
+    state.molal[4] = psi6 + chi7;              // Cl-
+    state.molal[5] = psi2 + psi1;              // SO4--
+    state.molal[6] = 0.0;                      // HSO4-
+    state.molal[3] = psi5 + chi8;              // NO3-
+
+    double smin = 2.0 * state.molal[5] + state.molal[3] + state.molal[4] - state.molal[0] - state.molal[2];
+    double hi = 0.0, ohi = 0.0;
+    cal_cph(smin, hi, ohi, state);
+    state.molal[1] = hi;
+
+    state.gnh3  = std::max(state.w[2] - psi4, state.tiny);
+    state.ghno3 = std::max(chi5 - psi5, state.tiny);
+    state.ghcl  = std::max(chi6 - psi6, state.tiny);
 
     return state.molal[2] * state.molal[4] / state.ghcl / state.gnh3 / (state.xk3 * state.r * state.temp * std::pow(state.water / state.gama[10], 2.0)) / ( (state.xk2 / state.xkw) * state.r * state.temp * std::pow(state.gama[9] / state.gama[4], 2.0) ) - 1.0;
 }
@@ -1670,6 +1689,27 @@ double Solver::funcm8(double x, const Input& input, State& state) {
         }
     }
 
+    // Re-populate final speciation outside the loop (to prevent zero-out by cal_act4)
+    state.molal[0] = state.psi8 + state.psi7 + 2.0 * state.psi1;                     // Na+
+    state.molal[2] = state.psi4;                                                     // NH4+
+    state.molal[4] = state.psi6 + state.psi7;                                         // Cl-
+    state.molal[5] = state.psi2 + state.psi1 + state.psi9 + state.psi10;              // SO4--
+    state.molal[6] = 0.0;                                                            // HSO4-
+    state.molal[3] = state.psi5 + state.psi8;                                         // NO3-
+    state.molal[7] = state.psi11;                                                    // Ca++
+    state.molal[8] = 2.0 * state.psi9;                                               // K+
+    state.molal[9] = state.psi10;                                                    // Mg++
+
+    double smin = 2.0 * state.molal[5] + state.molal[3] + state.molal[4] - state.molal[0] - state.molal[2]
+                - state.molal[8] - 2.0 * state.molal[9];
+    double hi = 0.0, ohi = 0.0;
+    cal_cph(smin, hi, ohi, state);
+    state.molal[1] = hi;
+
+    state.gnh3  = std::max(state.chi4 - state.psi4, state.tiny);
+    state.ghno3 = std::max(state.chi5 - state.psi5, state.tiny);
+    state.ghcl  = std::max(state.chi6 - state.psi6, state.tiny);
+
     return state.molal[1] * state.molal[4] / state.ghcl / state.a6 - 1.0;
 }
 
@@ -1888,6 +1928,27 @@ double Solver::funcp13(double x, const Input& input, State& state) {
             break;
         }
     }
+
+    // Re-populate final speciation outside the loop (to prevent zero-out by cal_act4)
+    state.molal[0] = state.psi8 + state.psi7;                                                         // Na+
+    state.molal[2] = state.psi4;                                                                      // NH4+
+    state.molal[4] = state.psi6 + state.psi7 + state.psi14 + 2.0 * state.psi16 + 2.0 * state.psi17;   // Cl-
+    state.molal[5] = state.psi9 + state.psi10;                                                        // SO4--
+    state.molal[6] = 0.0;                                                                             // HSO4-
+    state.molal[3] = state.psi5 + state.psi8 + 2.0 * state.psi12 + state.psi13 + 2.0 * state.psi15;   // NO3-
+    state.molal[7] = state.psi11 + state.psi12 + state.psi17;                                         // Ca++
+    state.molal[8] = 2.0 * state.psi9 + state.psi13 + state.psi14;                                    // K+
+    state.molal[9] = state.psi10 + state.psi15 + state.psi16;                                         // Mg++
+
+    double smin = 2.0 * state.molal[5] + state.molal[3] + state.molal[4] - state.molal[0] - state.molal[2]
+                - state.molal[8] - 2.0 * state.molal[9] - 2.0 * state.molal[7];
+    double hi = 0.0, ohi = 0.0;
+    cal_cph(smin, hi, ohi, state);
+    state.molal[1] = hi;
+
+    state.gnh3  = std::max(state.chi4 - state.psi4, state.tiny);
+    state.ghno3 = std::max(state.chi5 - state.psi5, state.tiny);
+    state.ghcl  = std::max(state.chi6 - state.psi6, state.tiny);
 
     return state.molal[1] * state.molal[4] / state.ghcl / state.a6 - 1.0;
 }
