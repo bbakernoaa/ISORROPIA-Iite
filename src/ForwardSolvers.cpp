@@ -861,6 +861,7 @@ void Solver::cal_cg5(const Input& input, State& state) {
     }
 
     double x1 = psi6lo;
+    state.rstgamp();              // Fortran CALCG5: RSTGAMP before the first FUNCG5A
     double y1 = funcg5a(x1, input, state);
     double eps = 1e-6;
     double x2 = x1;
@@ -877,8 +878,7 @@ void Solver::cal_cg5(const Input& input, State& state) {
 
         for (int i = 1; i <= ndiv; ++i) {
             x2 = x1 + dx;
-            state.rstgamp();
-            y2 = funcg5a(x2, input, state);
+            y2 = funcg5a(x2, input, state); // Fortran root-tracking has NO RSTGAMP here
             if ((y1 < 0.0 && y2 > 0.0) || (y1 > 0.0 && y2 < 0.0)) {
                 sign_changed = true;
                 break;
@@ -1044,8 +1044,7 @@ void Solver::cal_ch6(const Input& input, State& state) {
 
         for (int i = 1; i <= ndiv; ++i) {
             x2 = x1 + dx;
-            state.rstgamp();
-            y2 = funch6a(x2, input, state);
+            y2 = funch6a(x2, input, state); // Fortran CALCH6 root-tracking has NO RSTGAMP
             if ((y1 < 0.0 && y2 > 0.0) || (y1 > 0.0 && y2 < 0.0)) {
                 sign_changed = true;
                 break;
