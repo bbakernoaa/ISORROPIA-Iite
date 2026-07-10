@@ -251,7 +251,7 @@ void Solver::cal_s2(const Input& input, State& state) {
         double nh3aq = 0.0;
         if (hi < ohi) {
             double del = 0.0;
-            cal_claq(nh4i, ohi, del, state); // Replaces CALCAMAQ with CALCLAQ Equivalent
+            cal_amaq(nh4i, ohi, del, state); // NH3(aq) association
             nh4i  = std::max(nh4i - del, 0.0);
             ohi   = std::max(ohi - del, state.tiny);
             nh3aq = del;
@@ -320,15 +320,11 @@ void Solver::cal_n3(const Input& input, State& state) {
         double gg    = 2.0 * so4i + no3i - nh4i;
 
         if (hi < ohi) {
-            double del = 0.0;
-            cal_claq(-gg, nh4i, del, state); // Replaces CALCAMAQ2 with CALCLAQ Equivalent
-            nh3aq = del;
+            cal_amaq2(-gg, nh4i, ohi, nh3aq, state); // NH3(aq)
             hi    = akw / ohi;
         } else {
             hi = 0.0;
-            double del = 0.0;
-            cal_niaq(gg, no3i, del, state); // Replaces CALCNIAQ2 with CALCNIAQ Equivalent
-            no3aq = del;
+            cal_niaq2(gg, no3i, hi, no3aq, state); // HNO3(aq)
 
             double del_hs = 0.0;
             cal_chs4(hi, so4i, 0.0, del_hs, state);
@@ -476,26 +472,18 @@ void Solver::cal_q5(const Input& input, State& state) {
         }
 
         if (hi < ohi) {
-            double del = 0.0;
-            cal_claq(-gg, nh4i, del, state); // Replaces CALCAMAQ2 with CALCLAQ Equivalent
-            nh3aq = del;
+            cal_amaq2(-gg, nh4i, ohi, nh3aq, state); // NH3(aq)
             hi    = akw / ohi;
             hso4i = 0.0;
         } else {
             double ggno3 = std::max(2.0 * so4i + no3i - nai - nh4i, 0.0);
             double ggcl  = std::max(gg - ggno3, 0.0);
             if (ggcl > state.tiny) {
-                double del = 0.0;
-                cal_claq(ggcl, cli, hi, state); // Replaces CALCCLAQ2 with CALCLAQ Equivalent (cal_claq takes double& delt)
-                // Wait! Let's pass parameters correctly to CALCCLAQ2 (reproduced as Solver::cal_claq(cli, hi, delt, state))
-                cal_claq(cli, hi, del, state);
-                claq = del;
+                cal_claq2(ggcl, cli, hi, claq, state); // HCl(aq)
             }
             if (ggno3 > state.tiny) {
                 if (ggcl <= state.tiny) hi = 0.0;
-                double del = 0.0;
-                cal_niaq(no3i, hi, del, state); // Replaces CALCNIAQ2 with CALCNIAQ equivalent
-                no3aq = del;
+                cal_niaq2(ggno3, no3i, hi, no3aq, state); // HNO3(aq)
             }
 
             double del = 0.0;
@@ -671,23 +659,17 @@ void Solver::cal_r6(const Input& input, State& state) {
         }
 
         if (hi < ohi) {
-            double del = 0.0;
-            cal_claq(-gg, nh4i, del, state);
-            nh3aq = del;
+            cal_amaq2(-gg, nh4i, ohi, nh3aq, state); // NH3(aq)
             hi    = akw / ohi;
         } else {
             double ggno3 = std::max(2.0 * so4i + no3i - nai - nh4i, 0.0);
             double ggcl  = std::max(gg - ggno3, 0.0);
             if (ggcl > state.tiny) {
-                double del = 0.0;
-                cal_claq(ggcl, cli, hi, state);
-                claq = del;
+                cal_claq2(ggcl, cli, hi, claq, state); // HCl(aq)
             }
             if (ggno3 > state.tiny) {
                 if (ggcl <= state.tiny) hi = 0.0;
-                double del = 0.0;
-                cal_niaq(ggno3, no3i, hi, state);
-                no3aq = del;
+                cal_niaq2(ggno3, no3i, hi, no3aq, state); // HNO3(aq)
             }
 
             double del = 0.0;

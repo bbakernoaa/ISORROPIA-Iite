@@ -630,6 +630,11 @@ private:
     void poly3(double a1, double a2, double a3, double& root, int& islv, State& state);
     void cal_claq(double cli, double hi, double& delt, State& state);
     void cal_niaq(double no3i, double hi, double& delt, State& state);
+    void cal_amaq(double nh4i, double ohi, double& delt, State& state);
+    // "2"-variant aqueous dissolution routines (update H+/OH- and ion, return aq amount).
+    void cal_claq2(double ggcl, double& cli, double& hi, double& claq, State& state);
+    void cal_niaq2(double ggno3, double& no3i, double& hi, double& no3aq, State& state);
+    void cal_amaq2(double ggnh3, double& nh4i, double& ohi, double& nh3aq, State& state);
 
     // Case 3 Forward Speciation Solvers
     void cal_cg5(const Input& input, State& state);

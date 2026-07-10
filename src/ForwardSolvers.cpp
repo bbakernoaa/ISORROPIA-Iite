@@ -727,6 +727,71 @@ void Solver::cal_niaq(double no3i, double hi, double& delt, State& state) {
     }
 }
 
+// CALCAMAQ (non-2): NH3(aq) from (NH4+, OH-). Returns delt, inputs unchanged.
+void Solver::cal_amaq(double nh4i, double ohi, double& delt, State& state) {
+    double a22 = state.xk22 / state.xkw / state.water * std::pow(state.gama[7] / state.gama[8], 2.0); // GAMA(8)/GAMA(9)
+    double akw = state.xkw * state.rh * state.water * state.water;
+    double om1 = nh4i;
+    double om2 = ohi;
+    double bb = -(om1 + om2 + a22 * akw);
+    double cc = om1 * om2;
+    double dd = std::sqrt(bb * bb - 4.0 * cc);
+    double del1 = 0.5 * (-bb - dd);
+    double del2 = 0.5 * (-bb + dd);
+    if (del1 < 0.0) {
+        if (del2 > nh4i || del2 > ohi) delt = 0.0;
+        else delt = del2;
+    } else {
+        delt = del1;
+    }
+}
+
+// ===== "2"-variant aqueous dissolution routines =====
+// Match Fortran CALCCLAQ2/CALCNIAQ2/CALCAMAQ2: solve the undissociated acid/base
+// equilibrium, UPDATE the free ion (cli/no3i/nh4i) and H+/OH- in place, and
+// return the aqueous (undissociated) amount.
+void Solver::cal_claq2(double ggcl, double& cli, double& hi, double& claq, State& state) {
+    double a32 = state.xk32 * state.water / std::pow(state.gama[10], 2.0); // GAMA(11)
+    double akw = state.xkw * state.rh * state.water * state.water;
+    double alf1 = cli - ggcl;
+    double alf2 = ggcl;
+    double coef = alf1 + a32;
+    double del1 = 0.5 * (-coef + std::sqrt(coef * coef + 4.0 * a32 * alf2));
+    cli = alf1 + del1;
+    hi  = del1;
+    if (hi <= state.tiny) hi = std::sqrt(akw); // neutral solution
+    claq = alf2 - del1;
+}
+
+void Solver::cal_niaq2(double ggno3, double& no3i, double& hi, double& no3aq, State& state) {
+    double a42 = state.xk42 * state.water / std::pow(state.gama[9], 2.0); // GAMA(10)
+    double akw = state.xkw * state.rh * state.water * state.water;
+    double alf1 = no3i - ggno3;
+    double alf2 = ggno3;
+    double alf3 = hi;
+    double bb = alf3 + alf1 + a42;
+    double cc = alf3 * alf1 - a42 * alf2;
+    double del1 = 0.5 * (-bb + std::sqrt(bb * bb - 4.0 * cc));
+    no3i = alf1 + del1;
+    hi   = alf3 + del1;
+    if (hi <= state.tiny) hi = std::sqrt(akw); // neutral solution
+    no3aq = alf2 - del1;
+}
+
+void Solver::cal_amaq2(double ggnh3, double& nh4i, double& ohi, double& nh3aq, State& state) {
+    double a22 = state.xk22 / state.xkw / state.water * std::pow(state.gama[7] / state.gama[8], 2.0); // GAMA(8)/GAMA(9)
+    double akw = state.xkw * state.rh * state.water * state.water;
+    double alf1 = nh4i - ggnh3;
+    double alf2 = ggnh3;
+    double bb = alf1 + a22 * akw;
+    double cc = -a22 * akw * alf2;
+    double del = 0.5 * (-bb + std::sqrt(bb * bb - 4.0 * cc));
+    nh4i = alf1 + del;
+    ohi  = del;
+    if (ohi <= state.tiny) ohi = std::sqrt(akw); // neutral solution
+    nh3aq = alf2 - del;
+}
+
 void Solver::isrp3f(const Input& input, State& state) {
     state.clear_errors();
     state.actmod = 3;
@@ -785,7 +850,7 @@ void Solver::cal_cg5(const Input& input, State& state) {
     double x2 = x1;
     double y2 = y1;
 
-    if (std::abs(y1) <= eps || state.w[4] <= state.tiny) {
+    if (state.w[4] <= state.tiny) { // Fortran: IF (CHI6.LE.TINY) GOTO 50 (abs(y1) check is commented out)
         goto GOTO_50;
     }
 
@@ -867,6 +932,7 @@ double Solver::funcg5a(double x, const Input& input, State& state) {
     state.psi3 = 0.0;
     state.psi4 = 0.0;
     state.psi5 = 0.0;
+    double chi4 = std::max(state.w[2] - 2.0 * state.psi2, 0.0); // free NH4 after (NH4)2SO4
 
     int nsweep = 4;
     for (int sweep = 0; sweep < nsweep; ++sweep) {
@@ -881,9 +947,9 @@ double Solver::funcg5a(double x, const Input& input, State& state) {
         }
         state.psi5 = std::max(state.psi5, state.tiny);
 
-        if (state.w[2] > state.tiny) {
-            double bb = -(state.w[2] + state.psi6 + state.psi5 + 1.0 / a4);
-            double cc = state.w[2] * (state.psi5 + state.psi6) - 2.0 * state.psi2 / a4;
+        if (state.w[1] > state.tiny) { // accounts for NH3 evaporation (Fortran W(2)=sulfate)
+            double bb = -(chi4 + state.psi6 + state.psi5 + 1.0 / a4);
+            double cc = chi4 * (state.psi5 + state.psi6) - 2.0 * state.psi2 / a4;
             double dd = std::max(bb * bb - 4.0 * cc, 0.0);
             state.psi4 = 0.5 * (-bb - std::sqrt(dd));
         } else {
@@ -903,7 +969,7 @@ double Solver::funcg5a(double x, const Input& input, State& state) {
         cal_cph(smin, hi, ohi, state);
         state.molal[1] = hi; // H+
 
-        state.gnh3  = std::max(state.w[2] - state.psi4, state.tiny);
+        state.gnh3  = std::max(chi4 - state.psi4, state.tiny);
         state.ghno3 = std::max(state.w[3] - state.psi5, state.tiny);
         state.ghcl  = std::max(state.w[4] - state.psi6, state.tiny);
 
@@ -1013,21 +1079,24 @@ double Solver::funch6a(double x, const Input& input, State& state) {
     state.frst   = true;
     state.calain = true;
 
-    double psi6 = x;
-    double psi1 = state.w[1]; // Total Sulfate
-    double psi2 = 0.0;
-    double psi3 = 0.0;
+    // Setup parameters (SOLUT common block equivalents). These MUST live on the
+    // State: cal_cmr() case 'H' reads psi1/psi7/psi8, and the outer speciation
+    // depends on the same members persisting after the activity iteration.
+    state.psi6 = x;
+    state.chi1 = state.w[1];                                             // CNA2SO4 (total sulfate)
+    state.psi1 = state.chi1;
+    state.psi2 = 0.0;
+    state.psi3 = 0.0;
 
-    double frna = std::max(state.w[0] - 2.0 * psi1, 0.0);
-    double chi8 = std::min(frna, state.w[3]);
-    double chi5 = std::max(state.w[3] - chi8, 0.0);
-    double chi7 = std::min(std::max(frna - chi8, 0.0), state.w[4]);
-    double chi6 = std::max(state.w[4] - chi7, 0.0);
+    double frna = std::max(state.w[0] - 2.0 * state.chi1, 0.0);
+    state.chi8 = std::min(frna, state.w[3]);                             // CNANO3
+    state.chi4 = state.w[2];                                             // NH3(g) total
+    state.chi5 = std::max(state.w[3] - state.chi8, 0.0);                 // HNO3(g)
+    state.chi7 = std::min(std::max(frna - state.chi8, 0.0), state.w[4]); // CNACL
+    state.chi6 = std::max(state.w[4] - state.chi7, 0.0);                 // HCL(g)
 
-    double psi7 = chi7;
-    double psi8 = chi8;
-    double psi4 = 0.0;
-    double psi5 = 0.0;
+    state.psi7 = state.chi7;
+    state.psi8 = state.chi8;
 
     int nsweep = 4;
     for (int sweep = 0; sweep < nsweep; ++sweep) {
@@ -1035,22 +1104,26 @@ double Solver::funch6a(double x, const Input& input, State& state) {
         double a5 = state.xk4 * state.r * state.temp * std::pow(state.water / state.gama[9], 2.0);
         double a6 = state.xk3 * state.r * state.temp * std::pow(state.water / state.gama[10], 2.0);
 
-        psi5 = chi5 * (psi6 + psi7) - (a6 / a5) * psi8 * (chi6 - psi6 - psi3);
-        psi5 = psi5 / ((a6 / a5) * (chi6 - psi6 - psi3) + psi6 + psi7);
-        psi5 = std::max(psi5, state.tiny);
+        state.psi5 = state.chi5 * (state.psi6 + state.psi7) - (a6 / a5) * state.psi8 * (state.chi6 - state.psi6 - state.psi3);
+        state.psi5 = state.psi5 / ((a6 / a5) * (state.chi6 - state.psi6 - state.psi3) + state.psi6 + state.psi7);
+        state.psi5 = std::max(state.psi5, state.tiny);
 
-        double bb = -(state.w[2] + psi6 + psi5 + 1.0 / a4);
-        double cc = state.w[2] * (psi5 + psi6);
-        double dd = bb * bb - 4.0 * cc;
-        psi4 = 0.5 * (-bb - std::sqrt(dd));
-        psi4 = std::min(psi4, state.w[2]);
+        if (state.w[2] > state.tiny && state.water > state.tiny) {
+            double bb = -(state.chi4 + state.psi6 + state.psi5 + 1.0 / a4);
+            double cc = state.chi4 * (state.psi5 + state.psi6);
+            double dd = bb * bb - 4.0 * cc;
+            state.psi4 = 0.5 * (-bb - std::sqrt(dd));
+            state.psi4 = std::min(state.psi4, state.chi4);
+        } else {
+            state.psi4 = state.tiny;
+        }
 
-        state.molal[0] = psi8 + psi7 + 2.0 * psi1; // Na+
-        state.molal[2] = psi4;                    // NH4+
-        state.molal[4] = psi6 + psi7;              // Cl-
-        state.molal[5] = psi2 + psi1;              // SO4--
-        state.molal[6] = 0.0;                      // HSO4-
-        state.molal[3] = psi5 + psi8;              // NO3-
+        state.molal[0] = state.psi8 + state.psi7 + 2.0 * state.psi1; // Na+
+        state.molal[2] = state.psi4;                                 // NH4+
+        state.molal[4] = state.psi6 + state.psi7;                    // Cl-
+        state.molal[5] = state.psi2 + state.psi1;                    // SO4--
+        state.molal[6] = 0.0;                                        // HSO4-
+        state.molal[3] = state.psi5 + state.psi8;                    // NO3-
 
         double smin = 2.0 * state.molal[5] + state.molal[3] + state.molal[4] - state.molal[0] - state.molal[2];
         double hi = 0.0;
@@ -1058,13 +1131,15 @@ double Solver::funch6a(double x, const Input& input, State& state) {
         cal_cph(smin, hi, ohi, state);
         state.molal[1] = hi; // H+
 
-        state.gnh3  = std::max(state.w[2] - psi4, state.tiny);
-        state.ghno3 = std::max(chi5 - psi5, state.tiny);
-        state.ghcl  = std::max(chi6 - psi6, state.tiny);
+        state.gnh3  = std::max(state.chi4 - state.psi4, state.tiny);
+        state.ghno3 = std::max(state.chi5 - state.psi5, state.tiny);
+        state.ghcl  = std::max(state.chi6 - state.psi6, state.tiny);
 
-        state.cnacl   = std::max(chi7 - psi7, 0.0);
-        state.cnano3  = std::max(chi8 - psi8, 0.0);
-        state.cna2so4 = std::max(state.w[1] - psi1, 0.0);
+        state.cnh42s4 = 0.0;
+        state.cnh4no3 = 0.0;
+        state.cnacl   = std::max(state.chi7 - state.psi7, 0.0);
+        state.cnano3  = std::max(state.chi8 - state.psi8, 0.0);
+        state.cna2so4 = std::max(state.chi1 - state.psi1, 0.0);
 
         state.cal_cmr();
 
@@ -1075,24 +1150,9 @@ double Solver::funch6a(double x, const Input& input, State& state) {
         }
     }
 
-    // Re-populate final speciation outside the loop (to prevent zero-out by cal_act3)
-    state.molal[0] = state.psi8 + state.psi7 + 2.0 * state.psi1; // Na+
-    state.molal[2] = state.psi4;                    // NH4+
-    state.molal[4] = state.psi6 + state.psi7;              // Cl-
-    state.molal[5] = state.psi2 + state.psi1;              // SO4--
-    state.molal[6] = 0.0;                      // HSO4-
-    state.molal[3] = state.psi5 + state.psi8;              // NO3-
-
-    double smin = 2.0 * state.molal[5] + state.molal[3] + state.molal[4] - state.molal[0] - state.molal[2];
-    double hi = 0.0, ohi = 0.0;
-    cal_cph(smin, hi, ohi, state);
-    state.molal[1] = hi;
-
-    state.gnh3  = std::max(state.w[2] - psi4, state.tiny);
-    state.ghno3 = std::max(chi5 - psi5, state.tiny);
-    state.ghcl  = std::max(chi6 - psi6, state.tiny);
-
-    return state.molal[2] * state.molal[4] / state.ghcl / state.gnh3 / (state.xk3 * state.r * state.temp * std::pow(state.water / state.gama[10], 2.0)) / ( (state.xk2 / state.xkw) * state.r * state.temp * std::pow(state.gama[9] / state.gama[4], 2.0) ) - 1.0;
+    double a4f = (state.xk2 / state.xkw) * state.r * state.temp * std::pow(state.gama[9] / state.gama[4], 2.0);
+    double a6f = state.xk3 * state.r * state.temp * std::pow(state.water / state.gama[10], 2.0);
+    return state.molal[2] * state.molal[4] / state.ghcl / state.gnh3 / a6f / a4f - 1.0;
 }
 
 //=======================================================================
@@ -1105,42 +1165,49 @@ void Solver::cal_ci6(const Input& input, State& state) {
 
     // Dry composition material balance
     cal_ci1a(input, state);
-    state.molalr[1]  = state.cnh4hs4;
-    state.molalr[12] = state.clc;
-    state.molalr[11] = state.cnahso4;
-    state.molalr[1]  = state.cna2so4;
-    state.molalr[3]  = state.cnh42s4;
 
-    state.clc     = 0.0;
-    state.cnh4hs4 = 0.0;
-    state.cnahso4 = 0.0;
-    state.cna2so4 = 0.0;
-    state.cnh42s4 = 0.0;
+    // Save dry composition (CHI) and initialize dissolution variables (PSI).
+    // NOTE: cal_cmr() (case 'I') reads state.psi1..psi5 to build the ZSR pairs,
+    // so these MUST be stored on the State (not as locals).
+    state.chi1 = state.cnh4hs4;  // NH4HSO4
+    state.chi2 = state.clc;      // Letovicite (LC)
+    state.chi3 = state.cnahso4;  // NaHSO4
+    state.chi4 = state.cna2so4;  // Na2SO4
+    state.chi5 = state.cnh42s4;  // (NH4)2SO4
 
-    double psi1 = state.molalr[1];
-    double psi2 = state.molalr[12];
-    double psi3 = state.molalr[11];
-    double psi4 = state.molalr[1];
-    double psi5 = state.molalr[3];
+    state.psi1 = state.cnh4hs4;  // ASSIGN INITIAL PSI's
+    state.psi2 = state.clc;
+    state.psi3 = state.cnahso4;
+    state.psi4 = state.cna2so4;
+    state.psi5 = state.cnh42s4;
 
     int nsweep = 4;
     for (int sweep = 0; sweep < nsweep; ++sweep) {
         double a6 = state.xk1 * state.water / state.gama[6] * std::pow(state.gama[7] / state.gama[6], 2.0);
-        double bb = psi2 + psi4 + psi5 + a6;
-        double cc = -a6 * (psi2 + psi3 + psi1);
+        double bb = state.psi2 + state.psi4 + state.psi5 + a6;
+        double cc = -a6 * (state.psi2 + state.psi3 + state.psi1);
         double dd = bb * bb - 4.0 * cc;
         double psi6 = 0.5 * (-bb + std::sqrt(dd));
 
-        state.molal[1] = psi6;                           // H+
-        state.molal[0] = 2.0 * psi4 + psi3;              // Na+
-        state.molal[2] = 3.0 * psi2 + 2.0 * psi5 + psi1; // NH4+
-        state.molal[5] = psi2 + psi4 + psi5 + psi6;      // SO4--
-        state.molal[6] = psi2 + psi3 + psi1 - psi6;      // HSO4-
+        state.molal[1] = psi6;                                              // H+
+        state.molal[0] = 2.0 * state.psi4 + state.psi3;                     // Na+
+        state.molal[2] = 3.0 * state.psi2 + 2.0 * state.psi5 + state.psi1;  // NH4+
+        state.molal[5] = state.psi2 + state.psi4 + state.psi5 + psi6;       // SO4--
+        state.molal[6] = state.psi2 + state.psi3 + state.psi1 - psi6;       // HSO4-
+
+        state.clc     = 0.0;
+        state.cnahso4 = 0.0;
+        state.cna2so4 = state.chi4 - state.psi4;
+        state.cnh42s4 = 0.0;
+        state.cnh4hs4 = 0.0;
 
         state.cal_cmr();
 
-        if (!state.calain) break;
-        state.cal_act3();
+        if (state.frst && state.calaou || !state.frst && state.calain) {
+            state.cal_act3();
+        } else {
+            break;
+        }
     }
 }
 
@@ -1151,22 +1218,20 @@ void Solver::cal_ci1a(const Input& input, State& state) {
     state.cnh42s4 = 0.0;
     double frso4 = std::max(state.w[1] - state.cna2so4, 0.0);
 
-    if (state.w[2] <= frso4) {
-        state.clc     = 0.0;
-        state.cnh4hs4 = state.w[2];
-        state.cnahso4 = frso4 - state.w[2];
-        state.cna2so4 = state.cna2so4 - state.cnahso4;
-    } else {
-        double x = 2.0 * frso4 - state.w[2];
-        double y = state.w[2] - frso4;
-        if (x <= y) {
-            state.clc     = x;
-            state.cnh4hs4 = 0.0;
-            state.cnh42s4 = y - x;
-        } else {
-            state.clc     = y;
-            state.cnh4hs4 = x - y;
-            state.cnh42s4 = 0.0;
+    state.clc    = std::min(state.w[2] / 3.0, frso4 / 2.0);
+    frso4        = std::max(frso4 - 2.0 * state.clc, 0.0);
+    double frnh4 = std::max(state.w[2] - 3.0 * state.clc, 0.0);
+
+    if (frso4 <= state.tiny) {
+        state.clc     = std::max(state.clc - frnh4, 0.0);
+        state.cnh42s4 = 2.0 * frnh4;
+    } else if (frnh4 <= state.tiny) {
+        state.cnh4hs4 = 3.0 * std::min(frso4, state.clc);
+        state.clc     = std::max(state.clc - frso4, 0.0);
+        if (state.cna2so4 > state.tiny) {
+            frso4         = std::max(frso4 - state.cnh4hs4 / 3.0, 0.0);
+            state.cnahso4 = 2.0 * frso4;
+            state.cna2so4 = std::max(state.cna2so4 - frso4, 0.0);
         }
     }
 
@@ -1210,8 +1275,11 @@ void Solver::cal_cj3(const Input& input, State& state) {
 
         state.cal_cmr();
 
-        if (!state.calain) break;
-        state.cal_act2();
+        if (state.frst && state.calaou || !state.frst && state.calain) {
+            state.cal_act3();
+        } else {
+            break;
+        }
     }
 }
 
