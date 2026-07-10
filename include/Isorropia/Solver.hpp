@@ -9,7 +9,7 @@ namespace Isorropia {
 
 /**
  * @brief Species components indices mapped to 0-based array elements.
- * 
+ *
  * This enum maps components to their index in the 0-indexed arrays, replacing
  * the legacy 1-indexed Fortran array layout for components (W).
  */
@@ -26,7 +26,7 @@ enum class Component : size_t {
 
 /**
  * @brief Liquid aerosol ion species indices mapped to 0-based elements.
- * 
+ *
  * Maps to Fortran 'MOLAL' array in COMMON /IONS/ (1-indexed MOLAL(NIONS)).
  */
 enum class Ions : size_t {
@@ -44,13 +44,13 @@ enum class Ions : size_t {
 
 /**
  * @brief Input parameters for a single simulation cell.
- * 
+ *
  * Encapsulates all variables originally shared via COMMON /INPT/ in 'isrpia.inc'.
  */
 struct Input {
     /**
      * @brief Total concentrations of species in the system.
-     * 
+     *
      * Unit: µmol/m3 of air (when input unit is 0) or ug/m3 of air (when input unit is 1).
      * Maps to legacy Fortran 'W(NCOMP)' array (W(8)).
      */
@@ -58,7 +58,7 @@ struct Input {
 
     /**
      * @brief Organic species concentrations and properties.
-     * 
+     *
      * Unit: ug/m3 of air (for concentration), fraction (for organic-water uptake k_org), and kg/m3 (for density).
      * Maps to legacy Fortran 'ORG(NORG)' array (ORG(3)).
      * - org[0]: Concentration of organics (ug/m3)
@@ -69,7 +69,7 @@ struct Input {
 
     /**
      * @brief Concentration of aerosol-phase components.
-     * 
+     *
      * Unit: µmol/m3 of air or ug/m3.
      * Maps to legacy Fortran 'WAER(NCOMP)' array.
      */
@@ -77,7 +77,7 @@ struct Input {
 
     /**
      * @brief Ambient temperature.
-     * 
+     *
      * Unit: Kelvin (K).
      * Maps to legacy Fortran variable 'TEMP'.
      */
@@ -85,7 +85,7 @@ struct Input {
 
     /**
      * @brief Ambient Relative Humidity.
-     * 
+     *
      * Unit: Fraction [0.0 to 1.0] (e.g. 0.80 for 80% RH).
      * Maps to legacy Fortran variable 'RH'.
      */
@@ -93,7 +93,7 @@ struct Input {
 
     /**
      * @brief Problem type / formulation selector.
-     * 
+     *
      * - 0: Forward problem (Total concentrations are specified as inputs).
      * - 1: Reverse problem (Only aerosol-phase concentrations are specified as inputs).
      * Maps to legacy Fortran variable 'IPROB'.
@@ -102,7 +102,7 @@ struct Input {
 
     /**
      * @brief Mass balance adjustment switch.
-     * 
+     *
      * - 0: No adjustment.
      * - 1: Adjust concentrations for mass balance.
      * Maps to legacy Fortran variable 'NADJ'.
@@ -120,7 +120,7 @@ struct ErrorEntry {
 
 /**
  * @brief Comprehensive internal state of a simulation cell.
- * 
+ *
  * Fully encapsulates all legacy Fortran COMMON blocks to ensure total thread safety.
  * This class contains no global data, meaning multiple threads can execute solvers simultaneously on separate states.
  */
@@ -137,10 +137,10 @@ struct State {
     //=======================================================================
     // COMMON /IONS/ equivalents (Liquid aerosol phase properties)
     //=======================================================================
-    
+
     /**
      * @brief Molal concentrations of liquid ions.
-     * 
+     *
      * Unit: mol/kg of water.
      * Maps to legacy Fortran 'MOLAL(NIONS)' (MOLAL(10)).
      */
@@ -148,56 +148,56 @@ struct State {
 
     /**
      * @brief Molal concentrations of active ion pairs.
-     * 
+     *
      * Maps to legacy Fortran 'MOLALR(NPAIR)' (MOLALR(23)).
      */
     std::array<double, 23> molalr = {0.0};
 
     /**
      * @brief Mean molal activity coefficients of active ion pairs.
-     * 
+     *
      * Maps to legacy Fortran 'GAMA(NPAIR)' (GAMA(23)).
      */
     std::array<double, 23> gama = {0.0};
 
     /**
      * @brief Charges of active ion pairs.
-     * 
+     *
      * Maps to legacy Fortran 'ZZ(NPAIR)' (ZZ(23)).
      */
     std::array<double, 23> zz = {0.0};
 
     /**
      * @brief Charges of individual ion species.
-     * 
+     *
      * Maps to legacy Fortran 'Z(NIONS)' (Z(10)).
      */
     std::array<double, 10> z = {0.0};
 
     /**
      * @brief Activity coefficients in the outer iteration shell.
-     * 
+     *
      * Maps to legacy Fortran 'GAMOU(NPAIR)'.
      */
     std::array<double, 23> gamou = {0.0};
 
     /**
      * @brief Activity coefficients in the inner iteration shell.
-     * 
+     *
      * Maps to legacy Fortran 'GAMIN(NPAIR)'.
      */
     std::array<double, 23> gamin = {0.0};
 
     /**
      * @brief Reference molality constants for active ion pairs.
-     * 
+     *
      * Maps to legacy Fortran 'M0(NPAIR)'.
      */
     std::array<double, 23> m0 = {0.0};
 
     /**
      * @brief Dissolved gaseous species in liquid aerosol phase.
-     * 
+     *
      * Unit: mol/m3 of air.
      * Maps to legacy Fortran 'GASAQ(NGASAQ)' (GASAQ(3)).
      * - gasaq[0]: Aquated Ammonia (NH3_aq)
@@ -211,20 +211,20 @@ struct State {
     double coh = 0.0;     ///< Liquid phase Hydroxide (OH-) concentration. Maps to Fortran 'COH'.
     double chno3 = 0.0;   ///< Dissolved liquid phase HNO3. Maps to Fortran 'CHNO3'.
     double chcl = 0.0;    ///< Dissolved liquid phase HCl. Maps to Fortran 'CHCL'.
-    
+
     /**
      * @brief Total liquid water content of the aerosol phase.
-     * 
+     *
      * Unit: kg/m3 of air.
      * Maps to legacy Fortran variable 'WATER'.
      */
     double water = 0.0;
-    
+
     double ionic = 0.0;   ///< Total ionic strength of liquid aerosol. Maps to Fortran 'IONIC'.
 
     /**
      * @brief Individual component contributions of salts/organics to liquid water content.
-     * 
+     *
      * Unit: kg/m3 of air.
      * Maps to legacy Fortran 'WATCMP(NPAIR+1)' (WATCMP(24)).
      */
@@ -433,7 +433,7 @@ struct State {
 
     /**
      * @brief Pushes a diagnostic error onto the local stack without throwing an exception.
-     * 
+     *
      * Keeps execution thread-safe and extremely fast.
      * @param code The numeric error identifier.
      * @param message Explanatory text for the error.
@@ -469,7 +469,7 @@ struct State {
     std::array<double, 10> imw = {0.0};  ///< Molecular weights of 10 ions (g/mol). Maps to Fortran 'IMW(NIONS)'.
                                          ///< 0: Na+ (23.0), 1: H+ (1.0), 2: NH4+ (18.0), 3: NO3- (62.0), 4: Cl- (35.5),
                                          ///< 5: SO4^2- (96.0), 6: HSO4- (97.0), 7: Ca^2+ (40.1), 8: K+ (39.1), 9: Mg^2+ (24.3)
-    
+
     std::array<double, 8> wmw = {0.0};   ///< Molecular weights of 8 components (g/mol). Maps to Fortran 'WMW(NCOMP)'.
                                          ///< 0: Na (23.0), 1: H2SO4 (98.0), 2: NH3 (17.0), 3: HNO3 (63.0), 4: HCl (36.5),
                                          ///< 5: Ca (40.1), 6: K (39.1), 7: Mg (24.3)
@@ -484,35 +484,35 @@ struct State {
 
     /**
      * @brief Initializes molecular weights and fundamental physical constants.
-     * 
+     *
      * Replicates block data initialization in Fortran 'BLOCK DATA BLKISO'.
      */
     void initialize_constants();
 
     /**
      * @brief Initializes ZSR water activity lookup tables.
-     * 
+     *
      * Replicates pure salt data grids from Fortran 'BLOCK DATA BLKISO'.
      */
     void initialize_water_activities();
 
     /**
      * @brief Initializes unicomponent and mutual Deliquescence Relative Humidities.
-     * 
+     *
      * Replicates DRH calculations and temperature dependency formulas from Fortran INIT subroutines.
      */
     void initialize_drh();
 
     /**
      * @brief Calculates temperature-dependent equilibrium constants.
-     * 
+     *
      * Replicates calculations and corrections from Fortran subroutines (van 't Hoff equation).
      */
     void calculate_equilibrium_constants();
 
     /**
      * @brief Computes binary activity coefficients using pre-tabulated Kusik-Meissner grids.
-     * 
+     *
      * Replaces Fortran 'SUBROUTINE KMTAB'.
      * @param ionic_strength Total ionic strength of the solution.
      * @param temp_k Current temperature of the cell in Kelvin (K).
@@ -522,42 +522,42 @@ struct State {
 
     /**
      * @brief Computes multicomponent activity coefficients for pure Case 1 systems.
-     * 
+     *
      * Replaces Fortran 'SUBROUTINE CALCACT1'.
      */
     void cal_act1();
 
     /**
      * @brief Computes multicomponent activity coefficients for Case 2 systems.
-     * 
+     *
      * Replaces Fortran 'SUBROUTINE CALCACT2'.
      */
     void cal_act2();
 
     /**
      * @brief Computes multicomponent activity coefficients for Case 3 Marine systems.
-     * 
+     *
      * Replaces Fortran 'SUBROUTINE CALCACT3'.
      */
     void cal_act3();
 
     /**
      * @brief Computes multicomponent activity coefficients for Case 4 Crustal systems.
-     * 
+     *
      * Replaces Fortran 'SUBROUTINE CALCACT4'.
      */
     void cal_act4();
 
     /**
      * @brief Computes dynamic multi-species liquid water content of the aerosol using the ZSR relation.
-     * 
+     *
      * Replaces Fortran 'SUBROUTINE CALCMR'.
      */
     void cal_cmr();
 
     /**
      * @brief Resets activity coefficient arrays to default value of 0.1 if greater than threshold.
-     * 
+     *
      * Replaces Fortran 'SUBROUTINE RSTGAMP'.
      */
     void rstgamp();
@@ -572,7 +572,7 @@ public:
 
     /**
      * @brief Solves the thermodynamic equilibrium for the given inputs and state.
-     * 
+     *
      * Replaces the legacy Fortran 'SUBROUTINE ISOROPIA'.
      * @param input The chemical and meteorological inputs for the grid cell.
      * @param state The local state structure where results are calculated and stored.
@@ -582,28 +582,28 @@ public:
 private:
     /**
      * @brief Forward solver for NH4-SO4-H2O systems (Case 1).
-     * 
+     *
      * Maps to legacy Fortran 'SUBROUTINE ISRP1F' in 'isofwd.f'.
      */
     void isrp1f(const Input& input, State& state);
 
     /**
      * @brief Forward solver for NH4-SO4-NO3-H2O systems (Case 2).
-     * 
+     *
      * Maps to legacy Fortran 'SUBROUTINE ISRP2F' in 'isofwd.f'.
      */
     void isrp2f(const Input& input, State& state);
 
     /**
      * @brief Forward solver for Na-NH4-SO4-NO3-Cl-H2O systems (Case 3).
-     * 
+     *
      * Maps to legacy Fortran 'SUBROUTINE ISRP3F' in 'isofwd.f'.
      */
     void isrp3f(const Input& input, State& state);
 
     /**
      * @brief Forward solver for Na-NH4-SO4-NO3-Cl-Ca-K-Mg-H2O crustal systems (Case 4).
-     * 
+     *
      * Maps to legacy Fortran 'SUBROUTINE ISRP4F' in 'isofwd.f'.
      */
     void isrp4f(const Input& input, State& state);
@@ -686,28 +686,28 @@ private:
 
     /**
      * @brief Reverse solver for NH4-SO4-H2O systems (Case 1).
-     * 
+     *
      * Maps to legacy Fortran 'SUBROUTINE ISRP1R' in 'isorev.f'.
      */
     void isrp1r(const Input& input, State& state);
 
     /**
      * @brief Reverse solver for NH4-SO4-NO3-H2O systems (Case 2).
-     * 
+     *
      * Maps to legacy Fortran 'SUBROUTINE ISRP2R' in 'isorev.f'.
      */
     void isrp2r(const Input& input, State& state);
 
     /**
      * @brief Reverse solver for Na-NH4-SO4-NO3-Cl-H2O marine systems (Case 3).
-     * 
+     *
      * Maps to legacy Fortran 'SUBROUTINE ISRP3R' in 'isorev.f'.
      */
     void isrp3r(const Input& input, State& state);
 
     /**
      * @brief Reverse solver for Na-NH4-SO4-NO3-Cl-Ca-K-Mg-H2O crustal systems (Case 4).
-     * 
+     *
      * Maps to legacy Fortran 'SUBROUTINE ISRP4R' in 'isorev.f'.
      */
     void isrp4r(const Input& input, State& state);
