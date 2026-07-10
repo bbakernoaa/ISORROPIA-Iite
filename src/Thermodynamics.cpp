@@ -71,7 +71,7 @@ void State::initialize_drh() {
     if (static_cast<int>(temp) != 298) {
         double t0 = 298.15;
         double tcf = 1.0 / temp - 1.0 / t0;
-        
+
         drnacl   *= std::exp(25.0 * tcf);
         drnano3  *= std::exp(304.0 * tcf);
         drna2so4 *= std::exp(80.0 * tcf);
@@ -156,17 +156,17 @@ void State::calculate_equilibrium_constants() {
     xk6  = 1.086e-16; // NH4CL(s)         <==> NH3(g)    + HCL(g)
     xk7  = 1.817;     // (NH4)2SO4(s)     <==> 2*NH4(aq) + SO4(aq)
     xk8  = 37.661;    // NACL(s)          <==> NA(aq)    + CL(aq)
-    
-    // Choose xk10 at standard Temp based on Case Routing (non-crustal Case 1 & 2 vs crustal Case 3 & 4)
-    double nitrate_sum = w[3] + waer[3];
-    double crustal_sum = w[5] + w[6] + w[7] + waer[5] + waer[6] + waer[7];
-    double marine_sum  = w[0] + w[4] + waer[0] + waer[4];
-    bool is_crustal_or_marine = (crustal_sum > tiny) || (marine_sum > tiny);
 
-    if (is_crustal_or_marine) {
-        xk10 = 4.199e-17; // NH4NO3(s) <==> NH3(g) + HNO3(g) (Mozurkewich, 1993)
+    // Choose xk10 based on Fortran INIT routing: ONLY the crustal driver (INIT4,
+    // Ca/K/Mg present) uses the Mozurkewich (1993) value; INIT1/2/3 (including
+    // marine Na/Cl systems, INIT3) use the legacy ISORROPIA value.
+    double crustal_sum = w[5] + w[6] + w[7] + waer[5] + waer[6] + waer[7];
+    bool is_crustal = (crustal_sum > tiny);
+
+    if (is_crustal) {
+        xk10 = 4.199e-17; // NH4NO3(s) <==> NH3(g) + HNO3(g) (Mozurkewich, 1993) - INIT4
     } else {
-        xk10 = 5.746e-17; // Legacy standard ISORROPIA value for non-crustal runs
+        xk10 = 5.746e-17; // Legacy standard ISORROPIA value - INIT1/2/3
     }
 
     xk11 = 2.413e4;   // NAHSO4(s)        <==> NA(aq)    + HSO4(aq)
@@ -175,7 +175,7 @@ void State::calculate_equilibrium_constants() {
     xk14 = 22.05;     // NH4CL(s)         <==> NH4(aq)   + CL(aq)
     xkw  = 1.010e-14; // H2O              <==> H(aq)     + OH(aq)
     xk9  = 11.977;    // NANO3(s)         <==> NA(aq)    + NO3(aq)
-    
+
     xk15 = 6.067e5;   // CA(NO3)2(s)      <==> CA(aq)    + 2NO3(aq)
     xk16 = 7.974e11;  // CACL2(s)         <==> CA(aq)    + 2CL(aq)
     xk17 = 1.569e-2;  // K2SO4(s)         <==> 2K(aq)    + SO4(aq)
@@ -207,11 +207,11 @@ void State::calculate_equilibrium_constants() {
         xk7  *= std::exp(-2.65 * (t0t - 1.0) + 38.570 * coef);
         xk8  *= std::exp(-1.56 * (t0t - 1.0) + 16.900 * coef);
         xk9  *= std::exp(-8.22 * (t0t - 1.0) + 16.010 * coef);
-        
-        if (is_crustal_or_marine) {
-            xk10 *= std::exp(-74.7351 * (t0t - 1.0) + 6.025 * coef); // Mozurkewich, 1993
+
+        if (is_crustal) {
+            xk10 *= std::exp(-74.7351 * (t0t - 1.0) + 6.025 * coef); // Mozurkewich, 1993 (INIT4)
         } else {
-            xk10 *= std::exp(-74.38 * (t0t - 1.0) + 6.120 * coef);    // Legacy standard ISORROPIA scaling
+            xk10 *= std::exp(-74.38 * (t0t - 1.0) + 6.120 * coef);    // Legacy ISORROPIA (INIT1/2/3)
         }
 
         xk11 *= std::exp(0.79 * (t0t - 1.0) + 14.746 * coef);
@@ -219,12 +219,12 @@ void State::calculate_equilibrium_constants() {
         xk13 *= std::exp(-5.19 * (t0t - 1.0) + 54.400 * coef);
         xk14 *= std::exp(24.55 * (t0t - 1.0) + 16.900 * coef);
         xkw  *= std::exp(-22.52 * (t0t - 1.0) + 26.920 * coef);
-        
+
         xk17 *= std::exp(-9.585 * (t0t - 1.0) + 45.81 * coef);
         xk18 *= std::exp(-8.423 * (t0t - 1.0) + 17.96 * coef);
         xk19 *= std::exp(-14.08 * (t0t - 1.0) + 19.39 * coef);
         xk20 *= std::exp(-6.902 * (t0t - 1.0) + 19.95 * coef);
-        
+
         // Note: xk15, xk16, xk23, xk24, xk25 temperature corrections are 0.0 in Fortran
     }
 
@@ -242,8 +242,8 @@ void State::cal_cmr() {
         sc = std::toupper(static_cast<unsigned char>(scase[0]));
     }
 
-    // Reset molalr array
-    molalr.fill(0.0);
+    // Reset molalr array (commented out to match F77 un-cleared memory behavior)
+    // molalr.fill(0.0);
 
     if (sc == 'A') { // NH4-SO4, Sulfate Poor
         molalr[3] = molal[5] + molal[6]; // (NH4)2SO4 = SO4-- + HSO4-

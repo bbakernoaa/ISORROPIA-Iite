@@ -158,6 +158,9 @@ void Solver::cal_cb4(const Input& input, State& state) {
 
     // 1. Dry material balance to initialize ZSR water estimation
     cal_cb1a(input, state);
+
+    state.cal_cmr(); // Pre-populate m0 lookups safely before we assign dry content!
+
     state.molalr[12] = state.clc;
     state.molalr[8]  = state.cnh4hs4;
     state.molalr[3]  = state.cnh42s4;
@@ -844,6 +847,19 @@ void Solver::cal_cg5(const Input& input, State& state) {
     double psi6lo = state.tiny;
     double psi6hi = state.w[4]; // Total Chloride
 
+    // Initialize water (Fortran CALCG5: WATER = CHI2/M0(4) + CHI1/M0(2)). The C++
+    // State starts each record with water=0, whereas Fortran's COMMON-block WATER
+    // persists nonzero across calls. Without this, funcg5a's first activity
+    // evaluation forms a6/a5 = 0/0 = NaN.
+    {
+        double chi1 = 0.5 * state.w[0];                      // Na2SO4
+        double chi2 = std::max(state.w[1] - chi1, 0.0);      // (NH4)2SO4
+        int irh = std::max(1, std::min(100, static_cast<int>(std::round(state.rh * 100.0))));
+        size_t idx = static_cast<size_t>(irh - 1);
+        state.water = chi2 / state.awas[idx] + chi1 / state.awss[idx];
+        state.water = std::max(state.water, state.tiny);
+    }
+
     double x1 = psi6lo;
     double y1 = funcg5a(x1, input, state);
     double eps = 1e-6;
@@ -996,6 +1012,20 @@ void Solver::cal_ch6(const Input& input, State& state) {
     state.calaou = true;
     double psi6lo = state.tiny;
     double psi6hi = state.w[4]; // Total Chloride
+
+    // Initialize water to a nonzero ZSR estimate (Na2SO4 + (NH4)2SO4) so funch6a's
+    // first activity evaluation does not form a6/a5 = 0/0 = NaN. Fortran relies on
+    // the persistent COMMON-block WATER; the C++ State starts each record at 0.
+    {
+        double chi1 = state.w[1];                            // total sulfate (Na2SO4)
+        double frna = std::max(state.w[0] - 2.0 * chi1, 0.0);
+        double chi4 = std::max(state.w[2], 0.0);             // NH4
+        int irh = std::max(1, std::min(100, static_cast<int>(std::round(state.rh * 100.0))));
+        size_t idx = static_cast<size_t>(irh - 1);
+        state.water = chi1 / state.awss[idx] + 0.5 * chi4 / state.awas[idx];
+        state.water = std::max(state.water, state.tiny);
+        (void)frna;
+    }
 
     double x1 = psi6lo;
     double y1 = funch6a(x1, input, state);
@@ -1287,17 +1317,22 @@ void Solver::cal_cj3(const Input& input, State& state) {
 // RECOREGULATION: Dynamic pH / H+-OH Equilibria Solver (CALCPH Equivalent)
 //=======================================================================
 void Solver::cal_cph(double gg, double& hi, double& ohi, State& state) {
-    double a7 = state.xkw * state.rh * state.water * state.water;
-    double bb = gg;
-    double cc = -a7;
-    double dd = bb * bb - 4.0 * cc;
-    hi = 0.5 * (bb + std::sqrt(dd));
-    if (hi <= state.tiny) {
-        double abb = std::abs(bb);
-        double denm = (bb + abb) + 2.0 * a7 / abb;
-        hi = 2.0 * a7 / denm;
+    // Faithful port of Fortran CALCPH. GG = (negative charge) - (positive charge).
+    double akw = state.xkw * state.rh * state.water * state.water;
+    double cn  = std::sqrt(akw); // neutral-solution floor
+    if (gg > state.tiny) {       // H+ in excess (acidic)
+        double bb = -gg;
+        double cc = -akw;
+        double dd = bb * bb - 4.0 * cc;
+        hi  = std::max(0.5 * (-bb + std::sqrt(dd)), cn);
+        ohi = akw / hi;
+    } else {                     // OH- in excess (basic)
+        double bb = gg;
+        double cc = -akw;
+        double dd = bb * bb - 4.0 * cc;
+        ohi = std::max(0.5 * (-bb + std::sqrt(dd)), cn);
+        hi  = akw / ohi;
     }
-    ohi = a7 / hi;
 }
 
 void Solver::isrp4f(const Input& input, State& state) {
@@ -1532,7 +1567,7 @@ double Solver::funco7(double x, const Input& input, State& state) {
             state.psi5 = state.tiny;
         }
 
-        if (state.w[2] > state.tiny) {
+        if (state.w[1] > state.tiny) { // Fortran IF(W(2).GT.TINY): W(2)=sulfate
             double bb = -(state.chi4 + state.psi6 + state.psi5 + 1.0 / state.a4);
             double cc = state.chi4 * (state.psi5 + state.psi6) - 2.0 * state.psi2 / state.a4;
             double dd = std::max(bb * bb - 4.0 * cc, 0.0);

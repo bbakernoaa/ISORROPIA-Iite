@@ -176,9 +176,15 @@ int main(int argc, char* argv[]) {
         double no3_print   = state.molal[3] * 62.0 * 1e6; // NO3- (MW=62)
         double so4_print   = state.molal[5] * 96.0 * 1e6; // SO4-- (MW=96)
         double hso4_print  = state.molal[6] * 97.0 * 1e6; // HSO4- (MW=97)
+        double na_print    = state.molal[0] * 23.0 * 1e6; // Na+ (MW=23)
+        double cl_print    = state.molal[4] * 35.5 * 1e6; // Cl- (MW=35.5)
+        double ca_print    = state.molal[7] * 40.1 * 1e6; // Ca++ (MW=40.1)
+        double k_print     = state.molal[8] * 39.1 * 1e6; // K+ (MW=39.1)
+        double mg_print    = state.molal[9] * 24.3 * 1e6; // Mg++ (MW=24.3)
 
         double gnh3_print  = state.gnh3 * 17.0 * 1e6; // Gaseous Ammonia (MW=17) -> ug/m3
         double ghno3_print = state.ghno3 * 63.0 * 1e6; // Gaseous Nitric Acid (MW=63) -> ug/m3
+        double ghcl_print  = state.ghcl * 36.5 * 1e6; // Gaseous HCl (MW=36.5) -> ug/m3
 
         double ph_print    = (state.water > 1e-20 && state.molal[1] > 1e-30) ? -std::log10(state.molal[1] / state.water) : 7.0;
         double ionic_print = state.ionic;
@@ -188,14 +194,21 @@ int main(int argc, char* argv[]) {
         double wat_org     = state.watcmp[23] * 1e9;
 
         outfile << "Record " << r + 1 << " Solution:" << std::endl;
+        outfile << " SCASE " << state.scase << "\n";
         outfile << " [WATER ] " << std::scientific << std::setprecision(3) << water_val << "\n";
         outfile << " [H+ ] " << std::scientific << std::setprecision(3) << h_print << "\n";
+        outfile << " [Na+ ] " << std::scientific << std::setprecision(3) << na_print << "\n";
         outfile << " [NH4+ ] " << std::scientific << std::setprecision(3) << nh4_print << "\n";
+        outfile << " [Cl- ] " << std::scientific << std::setprecision(3) << cl_print << "\n";
         outfile << " [NO3- ] " << std::scientific << std::setprecision(3) << no3_print << "\n";
         outfile << " [SO4-- ] " << std::scientific << std::setprecision(3) << so4_print << "\n";
         outfile << " [HSO4- ] " << std::scientific << std::setprecision(3) << hso4_print << "\n";
+        outfile << " [Ca ] " << std::scientific << std::setprecision(3) << ca_print << "\n";
+        outfile << " [K ] " << std::scientific << std::setprecision(3) << k_print << "\n";
+        outfile << " [Mg ] " << std::scientific << std::setprecision(3) << mg_print << "\n";
         outfile << " [NH3 ] " << std::scientific << std::setprecision(3) << gnh3_print << "\n";
         outfile << " [HNO3 ] " << std::scientific << std::setprecision(3) << ghno3_print << "\n";
+        outfile << " [HCL ] " << std::scientific << std::setprecision(3) << ghcl_print << "\n";
         outfile << " [Wat(NH4)2SO4] " << std::scientific << std::setprecision(3) << wat_nh42so4 << "\n";
         outfile << " [WatNH4NO3] " << std::scientific << std::setprecision(3) << wat_nh4no3 << "\n";
         outfile << " [WatOrg] " << std::scientific << std::setprecision(3) << wat_org << "\n";

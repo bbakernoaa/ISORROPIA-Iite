@@ -53,9 +53,9 @@ def parse_report_file(filepath):
 
     return records
 
-def generate_random_inputs(num_records=100000):
+def generate_random_inputs(num_records_per_case=10000):
     """
-    Generates dynamic atmospheric scenarios inside a standard .inp file.
+    Generates dynamic atmospheric scenarios inside a standard .inp file stratified by SCASE.
     """
     random.seed(42) # fixed seed
     
@@ -71,31 +71,126 @@ def generate_random_inputs(num_records=100000):
     ]
     
     scenarios = []
-    for _ in range(num_records):
-        # Generate physically meaningful bounds (including multi-component Na, Cl, Ca, K, Mg crustals)
-        na  = random.uniform(0.0, 5.0)
-        so4 = random.uniform(0.1, 20.0)
-        nh3 = random.uniform(0.1, 40.0)
-        no3 = random.uniform(0.1, 15.0)
-        cl  = random.uniform(0.0, 8.0)
-        ca  = random.uniform(0.0, 1.0)
-        k   = random.uniform(0.0, 1.0)
-        mg  = random.uniform(0.0, 1.0)
-        iorg = 1
-        korg = random.uniform(0.01, 0.25)
-        density = 1.0 # g/cm3
-        rh = random.uniform(0.20, 0.95)
-        temp = random.uniform(265.0, 315.0)
-        
-        scenarios.append({
-            "na": na, "so4": so4, "nh3": nh3, "no3": no3, "cl": cl,
-            "ca": ca, "k": k, "mg": mg, "iorg": iorg, "korg": korg,
-            "density": density, "rh": rh, "temp": temp
-        })
-        
-        line = f"{na:<7.3f} {so4:<7.3f} {nh3:<7.3f} {no3:<7.3f} {cl:<5.3f} {ca:<5.3f} {k:<5.3f} {mg:<5.3f}  {iorg:<4d}  {korg:<7.3f} {density:<9.1f} {rh:<9.3f} {temp:<7.2f}"
-        lines.append(line)
-        
+    
+    for case_idx in range(15):
+        for _ in range(num_records_per_case):
+            iorg = 1
+            korg = random.uniform(0.01, 0.25)
+            density = 1.0
+            rh = random.uniform(0.20, 0.95)
+            temp = random.uniform(265.0, 315.0)
+            
+            na = 0.0; so4 = 0.0; nh3 = 0.0; no3 = 0.0; cl = 0.0; ca = 0.0; k = 0.0; mg = 0.0
+            
+            if case_idx == 0: # Case A2 (Case 1, Sulfate-Poor)
+                so4 = random.uniform(0.1, 10.0)
+                nh3 = so4 * random.uniform(2.0, 5.0)
+            elif case_idx == 1: # Case B4 (Case 1, Sulfate-Rich, no acid)
+                so4 = random.uniform(0.1, 10.0)
+                nh3 = so4 * random.uniform(1.0, 1.99)
+            elif case_idx == 2: # Case C2 (Case 1, Sulfate-Rich, free acid)
+                so4 = random.uniform(0.1, 10.0)
+                nh3 = so4 * random.uniform(0.01, 0.99)
+            elif case_idx == 3: # Case D3 (Case 2, Sulfate-Poor)
+                so4 = random.uniform(0.1, 10.0)
+                nh3 = so4 * random.uniform(2.0, 5.0)
+                no3 = random.uniform(0.1, 5.0)
+            elif case_idx == 4: # Case E4 (Case 2, Sulfate-Rich, no acid)
+                so4 = random.uniform(0.1, 10.0)
+                nh3 = so4 * random.uniform(1.0, 1.99)
+                no3 = random.uniform(0.1, 5.0)
+            elif case_idx == 5: # Case F2 (Case 2, Sulfate-Rich, free acid)
+                so4 = random.uniform(0.1, 10.0)
+                nh3 = so4 * random.uniform(0.01, 0.99)
+                no3 = random.uniform(0.1, 5.0)
+            elif case_idx == 6: # Case G5 (Case 3, Sulfate-Poor, Sodium-Poor)
+                so4 = random.uniform(0.1, 10.0)
+                na = so4 * random.uniform(0.01, 1.99)
+                nh3 = so4 * random.uniform(2.0, 5.0)
+                no3 = random.uniform(0.1, 5.0)
+                cl = random.uniform(0.1, 5.0)
+            elif case_idx == 7: # Case H6 (Case 3, Sulfate-Poor, Sodium-Rich)
+                so4 = random.uniform(0.1, 10.0)
+                na = so4 * random.uniform(2.0, 4.0)
+                nh3 = so4 * random.uniform(2.0, 5.0)
+                no3 = random.uniform(0.1, 5.0)
+                cl = random.uniform(0.1, 5.0)
+            elif case_idx == 8: # Case I6 (Case 3, Sulfate-Rich, no acid)
+                so4 = random.uniform(0.1, 10.0)
+                total_cat_ratio = random.uniform(1.0, 1.99)
+                na = so4 * total_cat_ratio * random.uniform(0.1, 0.9)
+                nh3 = so4 * total_cat_ratio - na
+                no3 = random.uniform(0.1, 5.0)
+                cl = random.uniform(0.1, 5.0)
+            elif case_idx == 9: # Case J3 (Case 3, Sulfate-Rich, free acid)
+                so4 = random.uniform(0.1, 10.0)
+                total_cat_ratio = random.uniform(0.01, 0.99)
+                na = so4 * total_cat_ratio * random.uniform(0.1, 0.9)
+                nh3 = so4 * total_cat_ratio - na
+                no3 = random.uniform(0.1, 5.0)
+                cl = random.uniform(0.1, 5.0)
+            elif case_idx == 10: # Case O7 (Case 4, Sulfate-Poor, Dust/Na Poor)
+                so4 = random.uniform(0.1, 10.0)
+                crna_sum = so4 * random.uniform(0.1, 1.99)
+                na = crna_sum * random.uniform(0.1, 0.4)
+                ca = crna_sum * random.uniform(0.1, 0.2)
+                k = crna_sum * random.uniform(0.1, 0.2)
+                mg = crna_sum - na - ca - k
+                nh3 = so4 * random.uniform(2.0, 4.0) + (2.0 * so4 - crna_sum)
+                no3 = random.uniform(0.1, 5.0)
+                cl = random.uniform(0.1, 5.0)
+            elif case_idx == 11: # Case M8 (Case 4, Sulfate-Poor, Sodium Rich, Dust Poor)
+                so4 = random.uniform(0.1, 10.0)
+                cr_sum = so4 * random.uniform(0.1, 1.99)
+                ca = cr_sum * random.uniform(0.1, 0.4)
+                k = cr_sum * random.uniform(0.1, 0.3)
+                mg = cr_sum - ca - k
+                na = so4 * random.uniform(2.0, 3.0) + (2.0 * so4 - cr_sum)
+                nh3 = random.uniform(0.1, 10.0)
+                no3 = random.uniform(0.1, 5.0)
+                cl = random.uniform(0.1, 5.0)
+            elif case_idx == 12: # Case P13 (Case 4, Sulfate-Poor, Sodium Rich, Dust Rich)
+                so4 = random.uniform(0.1, 10.0)
+                cr_sum = so4 * random.uniform(2.01, 4.0)
+                ca = cr_sum * random.uniform(0.1, 0.4)
+                k = cr_sum * random.uniform(0.1, 0.3)
+                mg = cr_sum - ca - k
+                na = random.uniform(0.1, 10.0)
+                nh3 = random.uniform(0.1, 10.0)
+                no3 = random.uniform(0.1, 5.0)
+                cl = random.uniform(0.1, 5.0)
+            elif case_idx == 13: # Case L9 (Case 4, Sulfate-Rich, no free acid)
+                so4 = random.uniform(0.1, 10.0)
+                total_ratio = random.uniform(1.0, 1.99)
+                total_sum = total_ratio * so4
+                na = total_sum * random.uniform(0.1, 0.3)
+                nh3 = total_sum * random.uniform(0.1, 0.3)
+                ca = total_sum * random.uniform(0.01, 0.1)
+                k = total_sum * random.uniform(0.01, 0.1)
+                mg = total_sum - na - nh3 - ca - k
+                no3 = random.uniform(0.1, 5.0)
+                cl = random.uniform(0.1, 5.0)
+            else: # Case K4 (Case 4, Sulfate-Rich, free acid)
+                so4 = random.uniform(0.1, 10.0)
+                total_ratio = random.uniform(0.01, 0.99)
+                total_sum = total_ratio * so4
+                na = total_sum * random.uniform(0.1, 0.3)
+                nh3 = total_sum * random.uniform(0.1, 0.3)
+                ca = total_sum * random.uniform(0.01, 0.1)
+                k = total_sum * random.uniform(0.01, 0.1)
+                mg = total_sum - na - nh3 - ca - k
+                no3 = random.uniform(0.1, 5.0)
+                cl = random.uniform(0.1, 5.0)
+                
+            scenarios.append({
+                "na": na, "so4": so4, "nh3": nh3, "no3": no3, "cl": cl,
+                "ca": ca, "k": k, "mg": mg, "iorg": iorg, "korg": korg,
+                "density": density, "rh": rh, "temp": temp
+            })
+            
+            line = f"{na:<7.3f} {so4:<7.3f} {nh3:<7.3f} {no3:<7.3f} {cl:<5.3f} {ca:<5.3f} {k:<5.3f} {mg:<5.3f}  {iorg:<4d}  {korg:<7.3f} {density:<9.1f} {rh:<9.3f} {temp:<7.2f}"
+            lines.append(line)
+            
     return lines, scenarios
 
 def analyze_variance(ref_records, target_records, scenarios):
@@ -157,7 +252,7 @@ def analyze_variance(ref_records, target_records, scenarios):
     # Calculate statistics
     report_lines = []
     report_lines.append("# ISORROPIA-Lite Physical Speciation Property Variance Report\n")
-    report_lines.append("This report dynamically audits the numerical equivalence and variance of the modernized **C++17 dynamic thermodynamics solver** against the legacy **F77 Fortran reference binary** across **100000 randomized scenarios** covering arbitrary meteorology ($RH \\in [20\\%, 95\\%]$, $Temp \\in [265, 315]\\text{ K}$) and chemical components.\n")
+    report_lines.append("This report dynamically audits the numerical equivalence and variance of the modernized **C++17 dynamic thermodynamics solver** against the legacy **F77 Fortran reference binary** across **150000 randomized scenarios (10000 per SCASE situation class)** covering arbitrary meteorology ($RH \\in [20\\%, 95\\%]$, $Temp \\in [265, 315]\\text{ K}$) and chemical components.\n")
     
     report_lines.append("## 1. Summary Statistics of Discrepancies\n")
     report_lines.append("| Speciation Variable | Mean Relative Diff / Abs (pH) | Max Diff | Std Dev | Physical State Status |")
@@ -232,7 +327,7 @@ def analyze_variance(ref_records, target_records, scenarios):
     with open(out_report, 'w') as f:
         f.write("\n".join(report_lines))
         
-    print(f"\n🎉 SUCCESS: Calculated relative property variance across 100000 random situations!")
+    print(f"\n🎉 SUCCESS: Calculated relative property variance across 150000 stratified situations!")
     print(f"👉 Detailed scientific report written to: {out_report}")
 
 def main():
@@ -244,13 +339,13 @@ def main():
     fortran_bin = os.path.join(fortran_dir, "isolite")
     cpp_bin = os.path.join(base_dir, "build", "isorropia_cli")
     
-    # 1. Generate randomized configurations
-    inp_lines, scenarios = generate_random_inputs(100000)
+    # 1. Generate randomized configurations (10,000 per SCASE class)
+    inp_lines, scenarios = generate_random_inputs(10000)
     
     inp_file = os.path.join(fortran_dir, "variance_test.inp")
     with open(inp_file, 'w') as f:
         f.write("\n".join(inp_lines) + "\n")
-    print(f"Generated 100000 randomized inputs in {inp_file}")
+    print(f"Generated 150000 stratified inputs in {inp_file}")
     
     # 2. Run legacy F77 binary
     print("Executing legacy Fortran isolite binary...")
@@ -266,6 +361,8 @@ def main():
     ref_txt = os.path.join(fortran_dir, "variance_test.txt")
     if not os.path.exists(ref_txt):
         print(f"Error: Fortran report file {ref_txt} not generated.")
+        print(f"Fortran stdout:\n{fort_run.stdout}")
+        print(f"Fortran stderr:\n{fort_run.stderr}")
         sys.exit(1)
         
     # 3. Run modernized C++ binary
@@ -289,12 +386,12 @@ def main():
     analyze_variance(ref_records, target_records, scenarios)
     
     # Clean up temporary report files
-    if os.path.exists(inp_file):
-        os.remove(inp_file)
-    if os.path.exists(ref_txt):
-        os.remove(ref_txt)
-    if os.path.exists(cpp_out):
-        os.remove(cpp_out)
+    # if os.path.exists(inp_file):
+    #     os.remove(inp_file)
+    # if os.path.exists(ref_txt):
+    #     os.remove(ref_txt)
+    # if os.path.exists(cpp_out):
+    #     os.remove(cpp_out)
 
 if __name__ == "__main__":
     main()

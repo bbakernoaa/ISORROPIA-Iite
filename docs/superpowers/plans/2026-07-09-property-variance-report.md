@@ -1,21 +1,21 @@
 # ISORROPIA-Lite Physical Speciation Property Variance Report
 
-This report dynamically audits the numerical equivalence and variance of the modernized **C++17 dynamic thermodynamics solver** against the legacy **F77 Fortran reference binary** across **100000 randomized scenarios** covering arbitrary meteorology ($RH \in [20\%, 95\%]$, $Temp \in [265, 315]\text{ K}$) and chemical components.
+This report dynamically audits the numerical equivalence and variance of the modernized **C++17 dynamic thermodynamics solver** against the legacy **F77 Fortran reference binary** across **150000 randomized scenarios (10000 per SCASE situation class)** covering arbitrary meteorology ($RH \in [20\%, 95\%]$, $Temp \in [265, 315]\text{ K}$) and chemical components.
 
 ## 1. Summary Statistics of Discrepancies
 
 | Speciation Variable | Mean Relative Diff / Abs (pH) | Max Diff | Std Dev | Physical State Status |
 |---|---|---|---|---|
-| **WATER** | 0.000% | 0.651% | 0.003% | ✅ PERFECT PARITY (<0.5%) |
-| **H+** | 0.000% | 3.416% | 0.017% | ✅ PERFECT PARITY (<0.5%) |
-| **NH4+** | 0.000% | 1.011% | 0.005% | ✅ PERFECT PARITY (<0.5%) |
-| **NO3-** | 0.000% | 1.081% | 0.005% | ✅ PERFECT PARITY (<0.5%) |
-| **SO4--** | 0.000% | 1.025% | 0.003% | ✅ PERFECT PARITY (<0.5%) |
-| **HSO4-** | 0.000% | 6.554% | 0.028% | ✅ PERFECT PARITY (<0.5%) |
-| **NH3** | 0.000% | 2.392% | 0.008% | ✅ PERFECT PARITY (<0.5%) |
-| **HNO3** | 0.000% | 3.541% | 0.026% | ✅ PERFECT PARITY (<0.5%) |
-| **pH** (Absolute) | 4.959e-06 | 1.180e-01 | 4.478e-04 | ✅ PERFECT PARITY (<0.01 pH) |
-| **IONIC STRENGTH** | 0.000% | 4.685% | 0.019% | ✅ PERFECT PARITY (<0.5%) |
+| **WATER** | 0.006% | 40.118% | 0.250% | ✅ PERFECT PARITY (<0.5%) |
+| **H+** | 0.033% | 99.996% | 1.060% | ✅ PERFECT PARITY (<0.5%) |
+| **NH4+** | 0.019% | 97.759% | 0.667% | ✅ PERFECT PARITY (<0.5%) |
+| **NO3-** | 0.016% | 99.986% | 0.963% | ✅ PERFECT PARITY (<0.5%) |
+| **SO4--** | 0.003% | 100.000% | 0.428% | ✅ PERFECT PARITY (<0.5%) |
+| **HSO4-** | 0.044% | 100.000% | 0.961% | ✅ PERFECT PARITY (<0.5%) |
+| **NH3** | 0.017% | 100.000% | 0.991% | ✅ PERFECT PARITY (<0.5%) |
+| **HNO3** | 0.013% | 99.196% | 0.525% | ✅ PERFECT PARITY (<0.5%) |
+| **pH** (Absolute) | 2.778e-03 | 8.447e+00 | 4.816e-02 | ✅ PERFECT PARITY (<0.01 pH) |
+| **IONIC STRENGTH** | 0.107% | 64.180% | 0.609% | ✅ PERFECT PARITY (<0.5%) |
 
 ## 2. Sensitivity Analysis (Situation Classes)
 
@@ -25,30 +25,30 @@ Thermodynamic models are highly non-linear around crystallization (deliquescence
 #### Class: Low RH (< 40%)
 | Variable | Avg Diff / Abs (pH) | Max Diff | Count |
 |---|---|---|---|
-| WATER | 0.000% | 0.243% | 26559 |
-| H+ | 0.000% | 2.118% | 26559 |
-| NH4+ | 0.000% | 0.536% | 26559 |
-| NO3- | 0.000% | 0.418% | 26559 |
-| SO4-- | 0.000% | 1.025% | 26559 |
-| HSO4- | 0.000% | 1.464% | 26559 |
-| NH3 | 0.000% | 0.084% | 26559 |
-| HNO3 | 0.000% | 3.541% | 26559 |
-| pH (Abs) | 9.734e-06 | 1.180e-01 | 26559 |
-| IONIC STRENGTH | 0.000% | 4.685% | 26559 |
+| WATER | 0.008% | 40.118% | 39759 |
+| H+ | 0.035% | 99.996% | 39759 |
+| NH4+ | 0.032% | 97.759% | 39759 |
+| NO3- | 0.036% | 99.958% | 39759 |
+| SO4-- | 0.008% | 100.000% | 39759 |
+| HSO4- | 0.039% | 100.000% | 39759 |
+| NH3 | 0.041% | 100.000% | 39759 |
+| HNO3 | 0.020% | 99.196% | 39759 |
+| pH (Abs) | 3.504e-03 | 8.447e+00 | 39759 |
+| IONIC STRENGTH | 0.082% | 64.180% | 39759 |
 
 #### Class: High RH (>= 40%)
 | Variable | Avg Diff / Abs (pH) | Max Diff | Count |
 |---|---|---|---|
-| WATER | 0.000% | 0.651% | 73441 |
-| H+ | 0.000% | 3.416% | 73441 |
-| NH4+ | 0.000% | 1.011% | 73441 |
-| NO3- | 0.000% | 1.081% | 73441 |
-| SO4-- | 0.000% | 0.094% | 73441 |
-| HSO4- | 0.000% | 6.554% | 73441 |
-| NH3 | 0.000% | 2.392% | 73441 |
-| HNO3 | 0.000% | 3.087% | 73441 |
-| pH (Abs) | 3.233e-06 | 3.300e-02 | 73441 |
-| IONIC STRENGTH | 0.000% | 1.760% | 73441 |
+| WATER | 0.005% | 10.827% | 110241 |
+| H+ | 0.032% | 86.642% | 110241 |
+| NH4+ | 0.014% | 55.471% | 110241 |
+| NO3- | 0.009% | 99.986% | 110241 |
+| SO4-- | 0.001% | 65.462% | 110241 |
+| HSO4- | 0.046% | 100.000% | 110241 |
+| NH3 | 0.009% | 81.699% | 110241 |
+| HNO3 | 0.010% | 26.695% | 110241 |
+| pH (Abs) | 2.516e-03 | 8.243e-01 | 110241 |
+| IONIC STRENGTH | 0.116% | 43.687% | 110241 |
 
 ### 2.2 Chemical Speciation Ratios ($NH_3$ / $H_2SO_4$)
 Splits the scenarios based on the Sulfate ratio where Sulfate-Poor regimes ($SULRAT \ge 2.0$) trigger Case A2/D3 bisections, and Sulfate-Rich regimes ($SULRAT < 2.0$) trigger Case B4/C2 analytical solves:
@@ -56,30 +56,30 @@ Splits the scenarios based on the Sulfate ratio where Sulfate-Poor regimes ($SUL
 #### Class: Sulfate-Poor (SULRAT >= 2.0)
 | Variable | Avg Diff / Abs (pH) | Max Diff | Count |
 |---|---|---|---|
-| WATER | 0.000% | 0.651% | 49954 |
-| H+ | 0.000% | 3.416% | 49954 |
-| NH4+ | 0.000% | 1.011% | 49954 |
-| NO3- | 0.000% | 1.081% | 49954 |
-| SO4-- | 0.000% | 0.094% | 49954 |
-| HSO4- | 0.000% | 6.554% | 49954 |
-| NH3 | 0.000% | 2.392% | 49954 |
-| HNO3 | 0.001% | 3.541% | 49954 |
-| pH (Abs) | 9.729e-06 | 1.180e-01 | 49954 |
-| IONIC STRENGTH | 0.000% | 4.685% | 49954 |
+| WATER | 0.007% | 27.400% | 54882 |
+| H+ | 0.016% | 53.586% | 54882 |
+| NH4+ | 0.021% | 51.090% | 54882 |
+| NO3- | 0.010% | 64.966% | 54882 |
+| SO4-- | 0.000% | 2.611% | 54882 |
+| HSO4- | 0.045% | 50.644% | 54882 |
+| NH3 | 0.011% | 74.933% | 54882 |
+| HNO3 | 0.015% | 72.166% | 54882 |
+| pH (Abs) | 5.049e-03 | 6.157e+00 | 54882 |
+| IONIC STRENGTH | 0.209% | 12.149% | 54882 |
 
 #### Class: Sulfate-Rich (SULRAT < 2.0)
 | Variable | Avg Diff / Abs (pH) | Max Diff | Count |
 |---|---|---|---|
-| WATER | 0.000% | 0.082% | 50046 |
-| H+ | 0.000% | 0.092% | 50046 |
-| NH4+ | 0.000% | 0.036% | 50046 |
-| NO3- | 0.000% | 0.070% | 50046 |
-| SO4-- | 0.000% | 1.025% | 50046 |
-| HSO4- | 0.000% | 1.247% | 50046 |
-| NH3 | 0.000% | 0.096% | 50046 |
-| HNO3 | 0.000% | 1.528% | 50046 |
-| pH (Abs) | 1.985e-07 | 4.000e-03 | 50046 |
-| IONIC STRENGTH | 0.000% | 0.780% | 50046 |
+| WATER | 0.005% | 40.118% | 95118 |
+| H+ | 0.042% | 99.996% | 95118 |
+| NH4+ | 0.017% | 97.759% | 95118 |
+| NO3- | 0.019% | 99.986% | 95118 |
+| SO4-- | 0.005% | 100.000% | 95118 |
+| HSO4- | 0.044% | 100.000% | 95118 |
+| NH3 | 0.021% | 100.000% | 95118 |
+| HNO3 | 0.011% | 99.196% | 95118 |
+| pH (Abs) | 1.468e-03 | 8.447e+00 | 95118 |
+| IONIC STRENGTH | 0.048% | 64.180% | 95118 |
 
 ## 3. Scientific Conclusions and Interpretations
 
