@@ -1,6 +1,7 @@
 #include "Isorropia/Solver.hpp"
 #include "Isorropia/Isorropia.h"
 #include <algorithm>
+#include <cmath>
 
 namespace Isorropia {
 
@@ -61,6 +62,78 @@ void Solver::solve(const Input& input, State& state) {
         } else {
             isrp1f(input, state);
         }
+    }
+}
+
+KOKKOS_INLINE_FUNCTION
+double Solver::smooth_max(double a, double b, double k) {
+    double mx = std::max(a, b);
+    return mx + std::log(1.0 + std::exp(-k * std::abs(a - b))) / k;
+}
+
+KOKKOS_INLINE_FUNCTION
+double Solver::smooth_min(double a, double b, double k) {
+    double mn = std::min(a, b);
+    return mn - std::log(1.0 + std::exp(-k * std::abs(a - b))) / k;
+}
+
+KOKKOS_INLINE_FUNCTION
+void Solver::blend_states(const State& state_a, const State& state_b, double w, State& state_out) {
+    auto blend_val = [w](double a, double b) {
+        return w * a + (1.0 - w) * b;
+    };
+
+    state_out.coh = blend_val(state_a.coh, state_b.coh);
+    state_out.chno3 = blend_val(state_a.chno3, state_b.chno3);
+    state_out.chcl = blend_val(state_a.chcl, state_b.chcl);
+    state_out.water = blend_val(state_a.water, state_b.water);
+    state_out.ionic = blend_val(state_a.ionic, state_b.ionic);
+
+    state_out.ch2so4 = blend_val(state_a.ch2so4, state_b.ch2so4);
+    state_out.cnh42s4 = blend_val(state_a.cnh42s4, state_b.cnh42s4);
+    state_out.cnh4hs4 = blend_val(state_a.cnh4hs4, state_b.cnh4hs4);
+    state_out.cnacl = blend_val(state_a.cnacl, state_b.cnacl);
+    state_out.cna2so4 = blend_val(state_a.cna2so4, state_b.cna2so4);
+    state_out.cnano3 = blend_val(state_a.cnano3, state_b.cnano3);
+    state_out.cnh4no3 = blend_val(state_a.cnh4no3, state_b.cnh4no3);
+    state_out.cnh4cl = blend_val(state_a.cnh4cl, state_b.cnh4cl);
+    state_out.cnahso4 = blend_val(state_a.cnahso4, state_b.cnahso4);
+    state_out.clc = blend_val(state_a.clc, state_b.clc);
+    state_out.ccaso4 = blend_val(state_a.ccaso4, state_b.ccaso4);
+    state_out.ccano32 = blend_val(state_a.ccano32, state_b.ccano32);
+    state_out.ccacl2 = blend_val(state_a.ccacl2, state_b.ccacl2);
+    state_out.ck2so4 = blend_val(state_a.ck2so4, state_b.ck2so4);
+    state_out.ckhso4 = blend_val(state_a.ckhso4, state_b.ckhso4);
+    state_out.ckno3 = blend_val(state_a.ckno3, state_b.ckno3);
+    state_out.ckcl = blend_val(state_a.ckcl, state_b.ckcl);
+    state_out.cmgso4 = blend_val(state_a.cmgso4, state_b.cmgso4);
+    state_out.cmgno32 = blend_val(state_a.cmgno32, state_b.cmgno32);
+    state_out.cmgcl2 = blend_val(state_a.cmgcl2, state_b.cmgcl2);
+
+    state_out.gnh3 = blend_val(state_a.gnh3, state_b.gnh3);
+    state_out.ghno3 = blend_val(state_a.ghno3, state_b.ghno3);
+    state_out.ghcl = blend_val(state_a.ghcl, state_b.ghcl);
+
+    for (size_t i = 0; i < state_out.molal.size(); ++i) {
+        state_out.molal[i] = blend_val(state_a.molal[i], state_b.molal[i]);
+    }
+    for (size_t i = 0; i < state_out.molalr.size(); ++i) {
+        state_out.molalr[i] = blend_val(state_a.molalr[i], state_b.molalr[i]);
+    }
+    for (size_t i = 0; i < state_out.gama.size(); ++i) {
+        state_out.gama[i] = blend_val(state_a.gama[i], state_b.gama[i]);
+    }
+    for (size_t i = 0; i < state_out.gamou.size(); ++i) {
+        state_out.gamou[i] = blend_val(state_a.gamou[i], state_b.gamou[i]);
+    }
+    for (size_t i = 0; i < state_out.gamin.size(); ++i) {
+        state_out.gamin[i] = blend_val(state_a.gamin[i], state_b.gamin[i]);
+    }
+    for (size_t i = 0; i < state_out.watcmp.size(); ++i) {
+        state_out.watcmp[i] = blend_val(state_a.watcmp[i], state_b.watcmp[i]);
+    }
+    for (size_t i = 0; i < state_out.gasaq.size(); ++i) {
+        state_out.gasaq[i] = blend_val(state_a.gasaq[i], state_b.gasaq[i]);
     }
 }
 

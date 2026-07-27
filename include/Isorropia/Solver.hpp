@@ -5,6 +5,10 @@
 #include <string>
 #include <string_view>
 
+#ifndef KOKKOS_INLINE_FUNCTION
+#define KOKKOS_INLINE_FUNCTION inline
+#endif
+
 namespace Isorropia {
 
 /**
@@ -711,6 +715,16 @@ private:
      * Maps to legacy Fortran 'SUBROUTINE ISRP4R' in 'isorev.f'.
      */
     void isrp4r(const Input& input, State& state);
+
+    // Smooth transition zone utilities for GPU compatibility
+    KOKKOS_INLINE_FUNCTION
+    static double smooth_max(double a, double b, double k);
+
+    KOKKOS_INLINE_FUNCTION
+    static double smooth_min(double a, double b, double k);
+
+    KOKKOS_INLINE_FUNCTION
+    static void blend_states(const State& state_a, const State& state_b, double w, State& state_out);
 };
 
 } // namespace Isorropia
