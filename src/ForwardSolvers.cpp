@@ -38,6 +38,9 @@ void Solver::isrp1f(const Input& input, State& state) {
             State state_poor = state;
             State state_rich = state;
 
+            state_poor.scase = "A2";
+            state_rich.scase = "B4";
+
             // Apply smooth clamping to protect inputs
             state_poor.w[2] = smooth_max(sulrat, T_poor, 100.0) * state_poor.w[1];
             state_rich.w[2] = smooth_min(sulrat, T_poor, 100.0) * state_rich.w[1];
@@ -60,6 +63,9 @@ void Solver::isrp1f(const Input& input, State& state) {
         else if (sulrat >= T_rich - eps && sulrat <= T_rich + eps) {
             State state_rich_no_acid = state;
             State state_rich_acid = state;
+
+            state_rich_no_acid.scase = "B4";
+            state_rich_acid.scase = "C2";
 
             state_rich_no_acid.w[2] = smooth_max(sulrat, T_rich, 100.0) * state_rich_no_acid.w[1];
             state_rich_acid.w[2] = smooth_min(sulrat, T_rich, 100.0) * state_rich_acid.w[1];
@@ -344,6 +350,9 @@ void Solver::isrp2f(const Input& input, State& state) {
             State state_poor = state;
             State state_rich = state;
 
+            state_poor.scase = "D3";
+            state_rich.scase = "E4";
+
             state_poor.w[2] = smooth_max(sulrat, T_poor, 100.0) * state_poor.w[1];
             state_rich.w[2] = smooth_min(sulrat, T_poor, 100.0) * state_rich.w[1];
 
@@ -360,6 +369,9 @@ void Solver::isrp2f(const Input& input, State& state) {
         else if (sulrat >= T_rich - eps && sulrat <= T_rich + eps) {
             State state_rich_no_acid = state;
             State state_rich_acid = state;
+
+            state_rich_no_acid.scase = "E4";
+            state_rich_acid.scase = "F2";
 
             state_rich_no_acid.w[2] = smooth_max(sulrat, T_rich, 100.0) * state_rich_no_acid.w[1];
             state_rich_acid.w[2] = smooth_min(sulrat, T_rich, 100.0) * state_rich_acid.w[1];
