@@ -6,30 +6,75 @@ namespace Isorropia {
 
 void Solver::isrp1f(const Input& input, State& state) {
     state.clear_errors();
-    state.actmod = 1; // Pre-set standard active activity coefficients model
+    state.actmod = 1;
 
-    // SULRAT = W(3) / W(2) (Total Ammonia / Total Sulfate)
     double sulrat = state.w[2] / state.w[1];
+    double T_poor = 2.0;
+    double T_rich = 1.0;
+    double eps = 0.05; // half-width of transition zone
 
-    if (sulrat >= 2.0) {
-        // Sulfate Poor Range
+    if (sulrat > T_poor + eps) {
+        // Pure Sulfate-Poor (A2) Case
         double dc = state.w[2] - 2.001 * state.w[1];
         state.w[2] += std::max(-dc, 0.0);
-
         state.scase = "A2";
         cal_ca2(input, state);
-    }
-    else if (sulrat >= 1.0) {
-        // Sulfate Rich (No Free Acid) Range
+    } 
+    else if (sulrat < T_poor - eps && sulrat > T_rich + eps) {
+        // Pure Sulfate-Rich / No Free Acid (B4) Case
         state.scase = "B4";
         cal_cb4(input, state);
         cal_cnh3(input, state);
     }
-    else {
-        // Sulfate Rich (Free Acid) Range
+    else if (sulrat < T_rich - eps) {
+        // Pure Sulfate-Rich / Free Acid (C2) Case
         state.scase = "C2";
         cal_cc2(input, state);
         cal_cnh3(input, state);
+    }
+    else {
+        // --- SMOOTH BLENDING TRANSITION ZONES ---
+        if (sulrat >= T_poor - eps && sulrat <= T_poor + eps) {
+            State state_poor = state;
+            State state_rich = state;
+
+            // Apply smooth clamping to protect inputs
+            state_poor.w[2] = smooth_max(sulrat, T_poor, 100.0) * state_poor.w[1];
+            state_rich.w[2] = smooth_min(sulrat, T_poor, 100.0) * state_rich.w[1];
+
+            // Resolve sulfate-poor dc adjustment smoothly
+            double dc = state_poor.w[2] - 2.001 * state_poor.w[1];
+            state_poor.w[2] += std::max(-dc, 0.0);
+
+            cal_ca2(input, state_poor);
+            
+            cal_cb4(input, state_rich);
+            cal_cnh3(input, state_rich);
+
+            // Blend states using cubic spline
+            double t = (sulrat - (T_poor - eps)) / (2.0 * eps);
+            double w = 3.0 * t * t - 2.0 * t * t * t;
+            blend_states(state_poor, state_rich, w, state);
+            state.scase = "A2_B4_Smooth";
+        }
+        else if (sulrat >= T_rich - eps && sulrat <= T_rich + eps) {
+            State state_rich_no_acid = state;
+            State state_rich_acid = state;
+
+            state_rich_no_acid.w[2] = smooth_max(sulrat, T_rich, 100.0) * state_rich_no_acid.w[1];
+            state_rich_acid.w[2] = smooth_min(sulrat, T_rich, 100.0) * state_rich_acid.w[1];
+
+            cal_cb4(input, state_rich_no_acid);
+            cal_cnh3(input, state_rich_no_acid);
+
+            cal_cc2(input, state_rich_acid);
+            cal_cnh3(input, state_rich_acid);
+
+            double t = (sulrat - (T_rich - eps)) / (2.0 * eps);
+            double w = 3.0 * t * t - 2.0 * t * t * t;
+            blend_states(state_rich_no_acid, state_rich_acid, w, state);
+            state.scase = "B4_C2_Smooth";
+        }
     }
 }
 

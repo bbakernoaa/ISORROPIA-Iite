@@ -32,3 +32,50 @@ TEST(SolverTest, SolveNH4SO4NO3Metastable) {
     EXPECT_NEAR(state.ghno3 * 1e6, 1.2439e-2, 1e-4); // Gaseous Nitric Acid in umol/m3
     EXPECT_NEAR(state.molal[1], 2.170486e-11, 1e-13);  // H+ molality (mol/kg)
 }
+
+TEST(SolverTest, Case1SmoothTransitions) {
+    Isorropia::Solver solver;
+    Isorropia::Input input;
+    Isorropia::State state;
+
+    // We want only Sulfate and Ammonia present, no Nitrate, no Sodium, no Crustals, no Chlorine.
+    // Set standard temperature and relative humidity
+    input.temp = 298.15;
+    input.rh = 0.80;
+    input.iprob = 0; // Forward solver
+
+    // Let's test the five regions by varying Ammonia (input.w[2]) for a fixed Sulfate (input.w[1] = 1e-6)
+    double sulfate = 1e-6;
+    input.w[1] = sulfate;
+
+    // Case A: Pure Sulfate-Poor (A2)
+    // sulrat > 2.05, e.g. 2.10 -> Ammonia = 2.10e-6
+    input.w[2] = 2.10 * sulfate;
+    solver.solve(input, state);
+    EXPECT_EQ(state.scase, "A2");
+
+    // Case B: A2-B4 Transition Zone (A2_B4_Smooth)
+    // sulrat in [1.95, 2.05], e.g. 2.00 -> Ammonia = 2.00e-6
+    input.w[2] = 2.00 * sulfate;
+    solver.solve(input, state);
+    EXPECT_EQ(state.scase, "A2_B4_Smooth");
+    EXPECT_GT(state.water, 0.0);
+
+    // Case C: Pure Sulfate-Rich / No Free Acid (B4)
+    // sulrat in (1.05, 1.95), e.g. 1.50 -> Ammonia = 1.50e-6
+    input.w[2] = 1.50 * sulfate;
+    solver.solve(input, state);
+    EXPECT_EQ(state.scase, "B4");
+
+    // Case D: B4-C2 Transition Zone (B4_C2_Smooth)
+    // sulrat in [0.95, 1.05], e.g. 1.00 -> Ammonia = 1.00e-6
+    input.w[2] = 1.00 * sulfate;
+    solver.solve(input, state);
+    EXPECT_EQ(state.scase, "B4_C2_Smooth");
+
+    // Case E: Pure Sulfate-Rich / Free Acid (C2)
+    // sulrat < 0.95, e.g. 0.80 -> Ammonia = 0.80e-6
+    input.w[2] = 0.80 * sulfate;
+    solver.solve(input, state);
+    EXPECT_EQ(state.scase, "C2");
+}
