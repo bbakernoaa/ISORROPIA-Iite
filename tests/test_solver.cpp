@@ -79,3 +79,43 @@ TEST(SolverTest, Case1SmoothTransitions) {
     solver.solve(input, state);
     EXPECT_EQ(state.scase, "C2");
 }
+
+TEST(SolverTest, Case2SmoothTransitions) {
+    Isorropia::Solver solver;
+    Isorropia::Input input;
+    Isorropia::State state;
+
+    input.temp = 298.15;
+    input.rh = 0.80;
+    input.iprob = 0; // Forward solver
+
+    double sulfate = 1e-6;
+    input.w[1] = sulfate;
+    input.w[3] = 0.5e-6; // Nitrate present
+
+    // Case A: Pure Sulfate-Poor (D3)
+    input.w[2] = 2.10 * sulfate;
+    solver.solve(input, state);
+    EXPECT_EQ(state.scase, "D3");
+
+    // Case B: D3-E4 Transition Zone (D3_E4_Smooth)
+    input.w[2] = 2.00 * sulfate;
+    solver.solve(input, state);
+    EXPECT_EQ(state.scase, "D3_E4_Smooth");
+    EXPECT_GT(state.water, 0.0);
+
+    // Case C: Pure Sulfate-Rich / No Free Acid (E4)
+    input.w[2] = 1.50 * sulfate;
+    solver.solve(input, state);
+    EXPECT_EQ(state.scase, "E4");
+
+    // Case D: E4-F2 Transition Zone (E4_F2_Smooth)
+    input.w[2] = 1.00 * sulfate;
+    solver.solve(input, state);
+    EXPECT_EQ(state.scase, "E4_F2_Smooth");
+
+    // Case E: Pure Sulfate-Rich / Free Acid (F2)
+    input.w[2] = 0.80 * sulfate;
+    solver.solve(input, state);
+    EXPECT_EQ(state.scase, "F2");
+}

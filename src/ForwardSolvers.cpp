@@ -317,22 +317,64 @@ void Solver::cal_cnh3(const Input& input, State& state) {
 
 void Solver::isrp2f(const Input& input, State& state) {
     state.clear_errors();
-    state.actmod = 2; // Pre-set standard active activity coefficients model
-    double sulrat = state.w[2] / state.w[1];
+    state.actmod = 2;
 
-    if (sulrat >= 2.0) {
+    double sulrat = state.w[2] / state.w[1];
+    double T_poor = 2.0;
+    double T_rich = 1.0;
+    double eps = 0.05;
+
+    if (sulrat > T_poor + eps) {
         state.scase = "D3";
         cal_cd3(input, state);
     }
-    else if (sulrat >= 1.0) {
-        state.scase = "E4"; // Set F77 active case prefix 'E' before speciation
+    else if (sulrat < T_poor - eps && sulrat > T_rich + eps) {
+        state.scase = "E4";
         cal_cb4(input, state);
         cal_cna(input, state);
     }
-    else {
-        state.scase = "F2"; // Set F77 active case prefix 'F' before speciation
+    else if (sulrat < T_rich - eps) {
+        state.scase = "F2";
         cal_cc2(input, state);
         cal_cna(input, state);
+    }
+    else {
+        // --- SMOOTH BLENDING TRANSITION ZONES ---
+        if (sulrat >= T_poor - eps && sulrat <= T_poor + eps) {
+            State state_poor = state;
+            State state_rich = state;
+
+            state_poor.w[2] = smooth_max(sulrat, T_poor, 100.0) * state_poor.w[1];
+            state_rich.w[2] = smooth_min(sulrat, T_poor, 100.0) * state_rich.w[1];
+
+            cal_cd3(input, state_poor);
+
+            cal_cb4(input, state_rich);
+            cal_cna(input, state_rich);
+
+            double t = (sulrat - (T_poor - eps)) / (2.0 * eps);
+            double w = 3.0 * t * t - 2.0 * t * t * t;
+            blend_states(state_poor, state_rich, w, state);
+            state.scase = "D3_E4_Smooth";
+        }
+        else if (sulrat >= T_rich - eps && sulrat <= T_rich + eps) {
+            State state_rich_no_acid = state;
+            State state_rich_acid = state;
+
+            state_rich_no_acid.w[2] = smooth_max(sulrat, T_rich, 100.0) * state_rich_no_acid.w[1];
+            state_rich_acid.w[2] = smooth_min(sulrat, T_rich, 100.0) * state_rich_acid.w[1];
+
+            cal_cb4(input, state_rich_no_acid);
+            cal_cna(input, state_rich_no_acid);
+
+            cal_cc2(input, state_rich_acid);
+            cal_cna(input, state_rich_acid);
+
+            double t = (sulrat - (T_rich - eps)) / (2.0 * eps);
+            double w = 3.0 * t * t - 2.0 * t * t * t;
+            blend_states(state_rich_no_acid, state_rich_acid, w, state);
+            state.scase = "E4_F2_Smooth";
+        }
     }
 }
 
