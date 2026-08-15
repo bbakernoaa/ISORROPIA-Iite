@@ -4,6 +4,12 @@
 #include <array>
 #include <string>
 #include <string_view>
+#include <algorithm>
+#include <cmath>
+
+#ifndef KOKKOS_INLINE_FUNCTION
+#define KOKKOS_INLINE_FUNCTION inline
+#endif
 
 namespace Isorropia {
 
@@ -711,6 +717,147 @@ private:
      * Maps to legacy Fortran 'SUBROUTINE ISRP4R' in 'isorev.f'.
      */
     void isrp4r(const Input& input, State& state);
+
+public:
+    // Smooth transition zone utilities for GPU compatibility
+    KOKKOS_INLINE_FUNCTION
+    static double smooth_max(double a, double b, double k) {
+        double mx = std::max(a, b);
+        if (k <= 0.0) return mx;
+        if (k * std::abs(a - b) >= 37.0) return mx;
+        return mx + std::log(1.0 + std::exp(-k * std::abs(a - b))) / k;
+    }
+
+    KOKKOS_INLINE_FUNCTION
+    static double smooth_min(double a, double b, double k) {
+        double mn = std::min(a, b);
+        if (k <= 0.0) return mn;
+        if (k * std::abs(a - b) >= 37.0) return mn;
+        return mn - std::log(1.0 + std::exp(-k * std::abs(a - b))) / k;
+    }
+
+    KOKKOS_INLINE_FUNCTION
+    static void blend_states(const State& state_a, const State& state_b, double w, State& state_out) {
+        state_out.temp = w * state_a.temp + (1.0 - w) * state_b.temp;
+        state_out.rh = w * state_a.rh + (1.0 - w) * state_b.rh;
+
+        for (size_t i = 0; i < state_out.w.size(); ++i) {
+            state_out.w[i] = w * state_a.w[i] + (1.0 - w) * state_b.w[i];
+        }
+        for (size_t i = 0; i < state_out.waer.size(); ++i) {
+            state_out.waer[i] = w * state_a.waer[i] + (1.0 - w) * state_b.waer[i];
+        }
+        for (size_t i = 0; i < state_out.org.size(); ++i) {
+            state_out.org[i] = w * state_a.org[i] + (1.0 - w) * state_b.org[i];
+        }
+
+        state_out.coh = w * state_a.coh + (1.0 - w) * state_b.coh;
+        state_out.chno3 = w * state_a.chno3 + (1.0 - w) * state_b.chno3;
+        state_out.chcl = w * state_a.chcl + (1.0 - w) * state_b.chcl;
+        state_out.water = w * state_a.water + (1.0 - w) * state_b.water;
+        state_out.ionic = w * state_a.ionic + (1.0 - w) * state_b.ionic;
+
+        state_out.ch2so4 = w * state_a.ch2so4 + (1.0 - w) * state_b.ch2so4;
+        state_out.cnh42s4 = w * state_a.cnh42s4 + (1.0 - w) * state_b.cnh42s4;
+        state_out.cnh4hs4 = w * state_a.cnh4hs4 + (1.0 - w) * state_b.cnh4hs4;
+        state_out.cnacl = w * state_a.cnacl + (1.0 - w) * state_b.cnacl;
+        state_out.cna2so4 = w * state_a.cna2so4 + (1.0 - w) * state_b.cna2so4;
+        state_out.cnano3 = w * state_a.cnano3 + (1.0 - w) * state_b.cnano3;
+        state_out.cnh4no3 = w * state_a.cnh4no3 + (1.0 - w) * state_b.cnh4no3;
+        state_out.cnh4cl = w * state_a.cnh4cl + (1.0 - w) * state_b.cnh4cl;
+        state_out.cnahso4 = w * state_a.cnahso4 + (1.0 - w) * state_b.cnahso4;
+        state_out.clc = w * state_a.clc + (1.0 - w) * state_b.clc;
+        state_out.ccaso4 = w * state_a.ccaso4 + (1.0 - w) * state_b.ccaso4;
+        state_out.ccano32 = w * state_a.ccano32 + (1.0 - w) * state_b.ccano32;
+        state_out.ccacl2 = w * state_a.ccacl2 + (1.0 - w) * state_b.ccacl2;
+        state_out.ck2so4 = w * state_a.ck2so4 + (1.0 - w) * state_b.ck2so4;
+        state_out.ckhso4 = w * state_a.ckhso4 + (1.0 - w) * state_b.ckhso4;
+        state_out.ckno3 = w * state_a.ckno3 + (1.0 - w) * state_b.ckno3;
+        state_out.ckcl = w * state_a.ckcl + (1.0 - w) * state_b.ckcl;
+        state_out.cmgso4 = w * state_a.cmgso4 + (1.0 - w) * state_b.cmgso4;
+        state_out.cmgno32 = w * state_a.cmgno32 + (1.0 - w) * state_b.cmgno32;
+        state_out.cmgcl2 = w * state_a.cmgcl2 + (1.0 - w) * state_b.cmgcl2;
+
+        state_out.gnh3 = w * state_a.gnh3 + (1.0 - w) * state_b.gnh3;
+        state_out.ghno3 = w * state_a.ghno3 + (1.0 - w) * state_b.ghno3;
+        state_out.ghcl = w * state_a.ghcl + (1.0 - w) * state_b.ghcl;
+
+        state_out.chi1 = w * state_a.chi1 + (1.0 - w) * state_b.chi1;
+        state_out.chi2 = w * state_a.chi2 + (1.0 - w) * state_b.chi2;
+        state_out.chi3 = w * state_a.chi3 + (1.0 - w) * state_b.chi3;
+        state_out.chi4 = w * state_a.chi4 + (1.0 - w) * state_b.chi4;
+        state_out.chi5 = w * state_a.chi5 + (1.0 - w) * state_b.chi5;
+        state_out.chi6 = w * state_a.chi6 + (1.0 - w) * state_b.chi6;
+        state_out.chi7 = w * state_a.chi7 + (1.0 - w) * state_b.chi7;
+        state_out.chi8 = w * state_a.chi8 + (1.0 - w) * state_b.chi8;
+        state_out.chi9 = w * state_a.chi9 + (1.0 - w) * state_b.chi9;
+        state_out.chi10 = w * state_a.chi10 + (1.0 - w) * state_b.chi10;
+        state_out.chi11 = w * state_a.chi11 + (1.0 - w) * state_b.chi11;
+        state_out.chi12 = w * state_a.chi12 + (1.0 - w) * state_b.chi12;
+        state_out.chi13 = w * state_a.chi13 + (1.0 - w) * state_b.chi13;
+        state_out.chi14 = w * state_a.chi14 + (1.0 - w) * state_b.chi14;
+        state_out.chi15 = w * state_a.chi15 + (1.0 - w) * state_b.chi15;
+        state_out.chi16 = w * state_a.chi16 + (1.0 - w) * state_b.chi16;
+        state_out.chi17 = w * state_a.chi17 + (1.0 - w) * state_b.chi17;
+
+        state_out.psi1 = w * state_a.psi1 + (1.0 - w) * state_b.psi1;
+        state_out.psi2 = w * state_a.psi2 + (1.0 - w) * state_b.psi2;
+        state_out.psi3 = w * state_a.psi3 + (1.0 - w) * state_b.psi3;
+        state_out.psi4 = w * state_a.psi4 + (1.0 - w) * state_b.psi4;
+        state_out.psi5 = w * state_a.psi5 + (1.0 - w) * state_b.psi5;
+        state_out.psi6 = w * state_a.psi6 + (1.0 - w) * state_b.psi6;
+        state_out.psi7 = w * state_a.psi7 + (1.0 - w) * state_b.psi7;
+        state_out.psi8 = w * state_a.psi8 + (1.0 - w) * state_b.psi8;
+        state_out.psi9 = w * state_a.psi9 + (1.0 - w) * state_b.psi9;
+        state_out.psi10 = w * state_a.psi10 + (1.0 - w) * state_b.psi10;
+        state_out.psi11 = w * state_a.psi11 + (1.0 - w) * state_b.psi11;
+        state_out.psi12 = w * state_a.psi12 + (1.0 - w) * state_b.psi12;
+        state_out.psi13 = w * state_a.psi13 + (1.0 - w) * state_b.psi13;
+        state_out.psi14 = w * state_a.psi14 + (1.0 - w) * state_b.psi14;
+        state_out.psi15 = w * state_a.psi15 + (1.0 - w) * state_b.psi15;
+        state_out.psi16 = w * state_a.psi16 + (1.0 - w) * state_b.psi16;
+        state_out.psi17 = w * state_a.psi17 + (1.0 - w) * state_b.psi17;
+
+        state_out.a1 = w * state_a.a1 + (1.0 - w) * state_b.a1;
+        state_out.a2 = w * state_a.a2 + (1.0 - w) * state_b.a2;
+        state_out.a3 = w * state_a.a3 + (1.0 - w) * state_b.a3;
+        state_out.a4 = w * state_a.a4 + (1.0 - w) * state_b.a4;
+        state_out.a5 = w * state_a.a5 + (1.0 - w) * state_b.a5;
+        state_out.a6 = w * state_a.a6 + (1.0 - w) * state_b.a6;
+        state_out.a7 = w * state_a.a7 + (1.0 - w) * state_b.a7;
+        state_out.a8 = w * state_a.a8 + (1.0 - w) * state_b.a8;
+        state_out.a9 = w * state_a.a9 + (1.0 - w) * state_b.a9;
+        state_out.a10 = w * state_a.a10 + (1.0 - w) * state_b.a10;
+        state_out.a11 = w * state_a.a11 + (1.0 - w) * state_b.a11;
+        state_out.a12 = w * state_a.a12 + (1.0 - w) * state_b.a12;
+        state_out.a13 = w * state_a.a13 + (1.0 - w) * state_b.a13;
+        state_out.a14 = w * state_a.a14 + (1.0 - w) * state_b.a14;
+        state_out.a15 = w * state_a.a15 + (1.0 - w) * state_b.a15;
+        state_out.a16 = w * state_a.a16 + (1.0 - w) * state_b.a16;
+        state_out.a17 = w * state_a.a17 + (1.0 - w) * state_b.a17;
+
+        for (size_t i = 0; i < state_out.molal.size(); ++i) {
+            state_out.molal[i] = w * state_a.molal[i] + (1.0 - w) * state_b.molal[i];
+        }
+        for (size_t i = 0; i < state_out.molalr.size(); ++i) {
+            state_out.molalr[i] = w * state_a.molalr[i] + (1.0 - w) * state_b.molalr[i];
+        }
+        for (size_t i = 0; i < state_out.gama.size(); ++i) {
+            state_out.gama[i] = w * state_a.gama[i] + (1.0 - w) * state_b.gama[i];
+        }
+        for (size_t i = 0; i < state_out.gamou.size(); ++i) {
+            state_out.gamou[i] = w * state_a.gamou[i] + (1.0 - w) * state_b.gamou[i];
+        }
+        for (size_t i = 0; i < state_out.gamin.size(); ++i) {
+            state_out.gamin[i] = w * state_a.gamin[i] + (1.0 - w) * state_b.gamin[i];
+        }
+        for (size_t i = 0; i < state_out.watcmp.size(); ++i) {
+            state_out.watcmp[i] = w * state_a.watcmp[i] + (1.0 - w) * state_b.watcmp[i];
+        }
+        for (size_t i = 0; i < state_out.gasaq.size(); ++i) {
+            state_out.gasaq[i] = w * state_a.gasaq[i] + (1.0 - w) * state_b.gasaq[i];
+        }
+    }
 };
 
 } // namespace Isorropia
