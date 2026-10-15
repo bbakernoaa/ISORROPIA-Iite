@@ -1,15 +1,12 @@
 #ifndef ISORROPIA_SOLVER_HPP
 #define ISORROPIA_SOLVER_HPP
 
+#include <Kokkos_Core.hpp>
 #include <array>
 #include <string>
 #include <string_view>
 #include <algorithm>
 #include <cmath>
-
-#ifndef KOKKOS_INLINE_FUNCTION
-#define KOKKOS_INLINE_FUNCTION inline
-#endif
 
 namespace Isorropia {
 
@@ -117,11 +114,71 @@ struct Input {
 };
 
 /**
+ * @brief Fixed-capacity, trivially-copyable string for device-portable state.
+ *
+ * Replaces std::string in State/ErrorEntry so those types stay trivially
+ * copyable and can be constructed inside KOKKOS_INLINE_FUNCTION solver paths.
+ * Preserves the call syntax used across the solvers and tests: assignment from
+ * a string literal, empty(), operator[], and equality against a literal.
+ *
+ * @tparam N Total buffer capacity including the terminating null character.
+ */
+template <size_t N>
+struct FixedString {
+    char data[N] = {};   ///< Null-terminated character storage.
+    size_t len = 0;      ///< Number of stored characters, excluding the terminator.
+
+    KOKKOS_INLINE_FUNCTION FixedString() = default;
+
+    KOKKOS_INLINE_FUNCTION FixedString(const char* s) { assign(s); }
+
+    /// Copy a null-terminated string, truncating to capacity.
+    KOKKOS_INLINE_FUNCTION void assign(const char* s) {
+        len = 0;
+        if (s != nullptr) {
+            while (s[len] != '\0' && len + 1 < N) {
+                data[len] = s[len];
+                ++len;
+            }
+        }
+        data[len] = '\0';
+    }
+
+    /// Copy a length-bounded string, truncating to capacity.
+    KOKKOS_INLINE_FUNCTION void assign(const char* s, size_t n) {
+        len = (n + 1 < N) ? n : (N - 1);
+        for (size_t i = 0; i < len; ++i) {
+            data[i] = s[i];
+        }
+        data[len] = '\0';
+    }
+
+    KOKKOS_INLINE_FUNCTION FixedString& operator=(const char* s) {
+        assign(s);
+        return *this;
+    }
+
+    KOKKOS_INLINE_FUNCTION bool empty() const { return len == 0; }
+    KOKKOS_INLINE_FUNCTION size_t size() const { return len; }
+    KOKKOS_INLINE_FUNCTION char operator[](size_t i) const { return data[i]; }
+    KOKKOS_INLINE_FUNCTION const char* c_str() const { return data; }
+
+    KOKKOS_INLINE_FUNCTION bool operator==(const FixedString& o) const {
+        if (len != o.len) return false;
+        for (size_t i = 0; i < len; ++i) {
+            if (data[i] != o.data[i]) return false;
+        }
+        return true;
+    }
+    KOKKOS_INLINE_FUNCTION bool operator!=(const FixedString& o) const { return !(*this == o); }
+};
+
+/**
  * @brief Single entry in the thread-local non-throwing error stack.
  */
 struct ErrorEntry {
-    int code = 0;              ///< Numeric error code returned by the solver.
-    std::string message;       ///< Descriptive error message explaining the issue.
+    int code = 0;                    ///< Numeric error code returned by the solver.
+    FixedString<64> message;         ///< Descriptive error message explaining the issue.
 };
 
 /**
@@ -404,7 +461,7 @@ struct State {
     //=======================================================================
     // COMMON /CASE/ equivalents (Simulation Case and Regimes)
     //=======================================================================
-    std::string scase = "??";  ///< Solution regime/case description. Maps to Fortran 'SCASE' in COMMON /CASE/.
+    FixedString<16> scase = "??";  ///< Solution regime/case description. Maps to Fortran 'SCASE' in COMMON /CASE/.
 
     //=======================================================================
     // COMMON /ZSR/ equivalents (Water activities arrays)
@@ -449,7 +506,8 @@ struct State {
             stack_overflow = true;
             return;
         }
-        error_stack[num_errors] = {code, std::string(message)};
+        error_stack[num_errors].code = code;
+        error_stack[num_errors].message.assign(message.data(), message.size());
         num_errors++;
     }
 
@@ -722,18 +780,20 @@ public:
     // Smooth transition zone utilities for GPU compatibility
     KOKKOS_INLINE_FUNCTION
     static double smooth_max(double a, double b, double k) {
-        double mx = std::max(a, b);
+        double mx = Kokkos::max(a, b);
         if (k <= 0.0) return mx;
-        if (k * std::abs(a - b) >= 37.0) return mx;
-        return mx + std::log(1.0 + std::exp(-k * std::abs(a - b))) / k;
+        const double delta = Kokkos::fabs(a - b);
+        if (k * delta >= 37.0) return mx;
+        return mx + Kokkos::log(1.0 + Kokkos::exp(-k * delta)) / k;
     }
 
     KOKKOS_INLINE_FUNCTION
     static double smooth_min(double a, double b, double k) {
-        double mn = std::min(a, b);
+        double mn = Kokkos::min(a, b);
         if (k <= 0.0) return mn;
-        if (k * std::abs(a - b) >= 37.0) return mn;
-        return mn - std::log(1.0 + std::exp(-k * std::abs(a - b))) / k;
+        const double delta = Kokkos::fabs(a - b);
+        if (k * delta >= 37.0) return mn;
+        return mn - Kokkos::log(1.0 + Kokkos::exp(-k * delta)) / k;
     }
 
     KOKKOS_INLINE_FUNCTION

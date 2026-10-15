@@ -1,5 +1,13 @@
 #include <gtest/gtest.h>
+#include <type_traits>
 #include "Isorropia/Solver.hpp"
+
+TEST(StateTest, DevicePortableTriviallyCopyable) {
+    // A device-portable State must be trivially copyable so it can be
+    // constructed and passed inside KOKKOS_INLINE_FUNCTION solver paths.
+    EXPECT_TRUE(std::is_trivially_copyable_v<Isorropia::ErrorEntry>);
+    EXPECT_TRUE(std::is_trivially_copyable_v<Isorropia::State>);
+}
 
 TEST(StateTest, ErrorStackPushAndClear) {
     Isorropia::State state;

@@ -1,8 +1,6 @@
 #pragma once
+#include <Kokkos_Core.hpp>
 #include <cstddef>
-#ifndef KOKKOS_INLINE_FUNCTION
-#define KOKKOS_INLINE_FUNCTION inline
-#endif
 
 namespace Isorropia {
 

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(IsorropiaLite LANGUAGES CXX Fortran)
 
+find_package(Kokkos REQUIRED)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -16,6 +18,7 @@ add_library(isorropia STATIC
 )
 set_target_properties(isorropia PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 target_include_directories(isorropia PUBLIC include ${CMAKE_CURRENT_BINARY_DIR}/modules)
+target_link_libraries(isorropia PUBLIC Kokkos::kokkos)
 
 # Executable target
 add_executable(isorropia_cli src/main.cpp)
