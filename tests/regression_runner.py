@@ -1,8 +1,9 @@
 import os
-import sys
 import re
-import subprocess
 import shutil
+import subprocess
+import sys
+
 
 def parse_report_file(filepath):
     """
@@ -13,7 +14,7 @@ def parse_report_file(filepath):
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Report file {filepath} not found.")
 
-    with open(filepath, 'r') as f:
+    with open(filepath) as f:
         content = f.read()
 
     # Regular expressions for key-value extraction (case-insensitive for exponent e/E)

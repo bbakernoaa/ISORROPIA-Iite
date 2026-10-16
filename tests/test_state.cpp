@@ -1,5 +1,13 @@
 #include <gtest/gtest.h>
+#include <type_traits>
 #include "Isorropia/Solver.hpp"
+
+TEST(StateTest, DevicePortableTriviallyCopyable) {
+    // A device-portable State must be trivially copyable so it can be
+    // constructed and passed inside KOKKOS_INLINE_FUNCTION solver paths.
+    EXPECT_TRUE(std::is_trivially_copyable_v<Isorropia::ErrorEntry>);
+    EXPECT_TRUE(std::is_trivially_copyable_v<Isorropia::State>);
+}
 
 TEST(StateTest, ErrorStackPushAndClear) {
     Isorropia::State state;
@@ -69,4 +77,50 @@ TEST(StateTest, DeliquescenceRelativeHumidity) {
     state.initialize_drh();
     EXPECT_GT(state.drnh42s4, 0.7997); // DRH should increase slightly as temperature drops for ammonium sulfate
     EXPECT_GT(state.drnh4hs4, 0.4000);
+}
+
+TEST(StateTest, SmoothMathHelpers) {
+    // Test smooth_max
+    EXPECT_NEAR(Isorropia::Solver::smooth_max(10.0, 5.0, 10.0), 10.0, 1e-4);
+    EXPECT_NEAR(Isorropia::Solver::smooth_max(5.0, 10.0, 10.0), 10.0, 1e-4);
+    EXPECT_DOUBLE_EQ(Isorropia::Solver::smooth_max(10.0, 5.0, 100.0), 10.0);
+    EXPECT_DOUBLE_EQ(Isorropia::Solver::smooth_max(5.0, 10.0, 100.0), 10.0);
+
+    // Test smooth_min
+    EXPECT_NEAR(Isorropia::Solver::smooth_min(10.0, 5.0, 10.0), 5.0, 1e-4);
+    EXPECT_NEAR(Isorropia::Solver::smooth_min(5.0, 10.0, 10.0), 5.0, 1e-4);
+    EXPECT_DOUBLE_EQ(Isorropia::Solver::smooth_min(10.0, 5.0, 100.0), 5.0);
+    EXPECT_DOUBLE_EQ(Isorropia::Solver::smooth_min(5.0, 10.0, 100.0), 5.0);
+
+    // Test k <= 0 fallback
+    EXPECT_DOUBLE_EQ(Isorropia::Solver::smooth_max(10.0, 5.0, 0.0), 10.0);
+    EXPECT_DOUBLE_EQ(Isorropia::Solver::smooth_min(10.0, 5.0, 0.0), 5.0);
+}
+
+TEST(StateTest, BlendStatesFidelity) {
+    Isorropia::State sa;
+    Isorropia::State sb;
+    Isorropia::State out;
+
+    sa.temp = 280.0;
+    sb.temp = 300.0;
+    sa.rh = 0.40;
+    sb.rh = 0.60;
+    sa.water = 100.0;
+    sb.water = 200.0;
+    sa.molal[0] = 1.0;
+    sb.molal[0] = 3.0;
+
+    Isorropia::Solver::blend_states(sa, sb, 0.5, out);
+
+    EXPECT_DOUBLE_EQ(out.temp, 290.0);
+    EXPECT_DOUBLE_EQ(out.rh, 0.50);
+    EXPECT_DOUBLE_EQ(out.water, 150.0);
+    EXPECT_DOUBLE_EQ(out.molal[0], 2.0);
+
+    Isorropia::Solver::blend_states(sa, sb, 0.75, out);
+    EXPECT_DOUBLE_EQ(out.temp, 285.0);
+    EXPECT_DOUBLE_EQ(out.rh, 0.45);
+    EXPECT_DOUBLE_EQ(out.water, 125.0);
+    EXPECT_DOUBLE_EQ(out.molal[0], 1.5);
 }

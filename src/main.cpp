@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
         double wat_org     = state.watcmp[23] * 1e9;
 
         outfile << "Record " << r + 1 << " Solution:" << std::endl;
-        outfile << " SCASE " << state.scase << "\n";
+        outfile << " SCASE " << state.scase.c_str() << "\n";
         outfile << " [WATER ] " << std::scientific << std::setprecision(3) << water_val << "\n";
         outfile << " [H+ ] " << std::scientific << std::setprecision(3) << h_print << "\n";
         outfile << " [Na+ ] " << std::scientific << std::setprecision(3) << na_print << "\n";

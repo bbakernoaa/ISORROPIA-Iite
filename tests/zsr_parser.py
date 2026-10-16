@@ -1,12 +1,12 @@
 import re
-import os
+
 
 def parse_fortran_zsr():
     """
     Parses uncommented DATA AW* statements from isolite1_0_src/isocom.f
     and generates C++ code with expanded values.
     """
-    with open("isolite1_0_src/isocom.f", "r") as f:
+    with open("isolite1_0_src/isocom.f") as f:
         lines = f.readlines()
 
     # We want to find uncommented DATA blocks starting from line 500 to 870
@@ -20,7 +20,7 @@ def parse_fortran_zsr():
     continuation_re = re.compile(r'^\s{5}([\&\$0-9])(.*)')
 
     for i, line in enumerate(lines):
-        line_num = i + 1
+        i + 1
         # Skip commented lines
         if line.startswith('C') or line.startswith('c') or line.startswith('*'):
             # If we were accumulating, the comment ends the data statement

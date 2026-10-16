@@ -1,6 +1,7 @@
 #include "Isorropia/Solver.hpp"
 #include "Isorropia/Isorropia.h"
 #include <algorithm>
+#include <cmath>
 
 namespace Isorropia {
 

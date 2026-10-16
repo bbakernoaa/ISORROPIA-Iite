@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import os
 import re
 
+
 def parse_isocom(file_path):
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         lines = f.readlines()
 
     blocks = {
